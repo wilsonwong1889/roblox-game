@@ -1,0 +1,6 @@
+build-smoke-test.rbxlx
+releases/
+backups/
+.vscode/
+*.rbxlx
+*.rbxlx.lock
