@@ -107,6 +107,17 @@ Expected output:
 4. Confirm the patrols stay outside the tycoon walls instead of entering the bases.
 5. Confirm soldiers still exist after multiple players claim tycoons.
 
+## Daily Spin Tests
+
+1. Join the game and open the start menu.
+2. Confirm the `Daily Spin` panel appears on the `Start Now` tab.
+3. Confirm the prize board shows 9 total tiles.
+4. Confirm `$10,000` appears 6 times, `$100,000` appears 2 times, and `$1,000,000` appears 1 time.
+5. Press `Spin Now`.
+6. Confirm wallet cash increases by one of the configured reward amounts.
+7. Confirm the button changes to the claimed state after use.
+8. Confirm re-pressing it in the same session does not pay again.
+
 ## Second-Floor Tests
 
 1. Use `Developer Full Build` or buy through the chain.

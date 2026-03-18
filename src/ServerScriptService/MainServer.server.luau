@@ -29,6 +29,10 @@ local requestStateFunction = remotesFolder:FindFirstChild("RequestState") or Ins
 requestStateFunction.Name = "RequestState"
 requestStateFunction.Parent = remotesFolder
 
+local dailySpinFunction = remotesFolder:FindFirstChild("RequestDailySpin") or Instance.new("RemoteFunction")
+dailySpinFunction.Name = "RequestDailySpin"
+dailySpinFunction.Parent = remotesFolder
+
 local sprintRemote = remotesFolder:FindFirstChild("SprintStateChanged") or Instance.new("RemoteEvent")
 sprintRemote.Name = "SprintStateChanged"
 sprintRemote.Parent = remotesFolder
@@ -232,6 +236,11 @@ local function sendUiMessage(player: Player, title: string, body: string, tone: 
 		body = body,
 		tone = tone or "info",
 	})
+end
+
+local function getUtcDayKey(): string
+	local now = os.date("!*t")
+	return string.format("%04d-%03d", now.year, now.yday)
 end
 
 local function ownsVipStarterPack(player: Player): boolean
@@ -893,6 +902,53 @@ connectVipStarterPackPrompt()
 
 requestStateFunction.OnServerInvoke = function(player)
 	return getStatePayload(player)
+end
+
+dailySpinFunction.OnServerInvoke = function(player)
+	if not GameConfig.DAILY_SPIN_ENABLED then
+		return {
+			ok = false,
+			reason = "disabled",
+		}
+	end
+
+	local profile = PlayerProfile.getProfile(player)
+	if not profile then
+		return {
+			ok = false,
+			reason = "missing_profile",
+		}
+	end
+
+	local dayKey = getUtcDayKey()
+	if not PlayerProfile.canUseDailySpin(player, dayKey) then
+		return {
+			ok = false,
+			reason = "already_claimed",
+			dayKey = dayKey,
+			reward = PlayerProfile.getDailySpinLastReward(player),
+		}
+	end
+
+	local reward = GameConfig.rollDailySpinReward()
+	PlayerProfile.markDailySpinClaimed(player, dayKey, reward.amount)
+	PlayerProfile.addWalletCash(player, reward.amount)
+	updateLeaderstats(player)
+	sendStateUpdate(player)
+	broadcastAllStates()
+	sendUiMessage(
+		player,
+		"Daily Spin",
+		string.format("You won %s from the daily spin.", reward.name),
+		"success"
+	)
+
+	return {
+		ok = true,
+		reward = reward.amount,
+		rewardName = reward.name,
+		dayKey = dayKey,
+	}
 end
 
 local function handleCharacterAdded(player: Player)

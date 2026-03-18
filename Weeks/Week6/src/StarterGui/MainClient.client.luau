@@ -11,6 +11,7 @@ local remotesFolder = ReplicatedStorage:WaitForChild("Remotes")
 local stateRemote = remotesFolder:WaitForChild("StateUpdate") :: RemoteEvent
 local messageRemote = remotesFolder:WaitForChild("UiMessage") :: RemoteEvent
 local requestStateFunction = remotesFolder:WaitForChild("RequestState") :: RemoteFunction
+local requestDailySpinFunction = remotesFolder:WaitForChild("RequestDailySpin") :: RemoteFunction
 local sprintRemote = remotesFolder:WaitForChild("SprintStateChanged") :: RemoteEvent
 
 for _, hudName in { "Week6HUD", "Week5HUD", "Week4HUD", "Week3HUD", "Week2HUD" } do
@@ -42,6 +43,10 @@ end
 
 local function formatRate(amount: number?): string
 	return string.format("$%.1f / sec", amount or 0)
+end
+
+local function formatChance(amount: number?): string
+	return string.format("%d%% chance", math.floor((amount or 0) + 0.5))
 end
 
 local function roundCount(value: number?): number
@@ -258,7 +263,7 @@ startMenuOverlay.Parent = screenGui
 
 local startMenuPanel = Instance.new("Frame")
 startMenuPanel.Name = "StartMenuPanel"
-startMenuPanel.Size = UDim2.fromOffset(560, 360)
+startMenuPanel.Size = UDim2.fromOffset(640, 480)
 startMenuPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 startMenuPanel.Position = UDim2.fromScale(0.5, 0.5)
 startMenuPanel.BackgroundColor3 = Color3.fromRGB(20, 25, 34)
@@ -335,7 +340,7 @@ menuBodyStroke.Parent = menuBody
 
 local menuBodyTitle = makeLabel(menuBody, "MenuBodyTitle", UDim2.new(1, -24, 0, 28), UDim2.fromOffset(14, 14), "Start Now", 22, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
 menuBodyTitle.ZIndex = 22
-local menuBodyText = makeLabel(menuBody, "MenuBodyText", UDim2.new(1, -24, 1, -68), UDim2.fromOffset(14, 50), "Claim a tycoon and begin building.", 15, Color3.fromRGB(214, 223, 238), Enum.Font.Gotham)
+local menuBodyText = makeLabel(menuBody, "MenuBodyText", UDim2.new(1, -24, 0, 56), UDim2.fromOffset(14, 50), "Claim a tycoon and begin building.", 15, Color3.fromRGB(214, 223, 238), Enum.Font.Gotham)
 menuBodyText.TextYAlignment = Enum.TextYAlignment.Top
 menuBodyText.TextWrapped = true
 menuBodyText.ZIndex = 22
@@ -344,10 +349,83 @@ local settingsActionButton = makeButton(menuBody, "SettingsActionButton", UDim2.
 settingsActionButton.Visible = false
 settingsActionButton.ZIndex = 22
 
+local dailySpinFrame = Instance.new("Frame")
+dailySpinFrame.Name = "DailySpinFrame"
+dailySpinFrame.Size = UDim2.new(1, -28, 0, 178)
+dailySpinFrame.Position = UDim2.fromOffset(14, 108)
+dailySpinFrame.BackgroundColor3 = Color3.fromRGB(29, 36, 49)
+dailySpinFrame.Visible = false
+dailySpinFrame.ZIndex = 22
+dailySpinFrame.Parent = menuBody
+
+local dailySpinCorner = Instance.new("UICorner")
+dailySpinCorner.CornerRadius = UDim.new(0, 14)
+dailySpinCorner.Parent = dailySpinFrame
+
+local dailySpinStroke = Instance.new("UIStroke")
+dailySpinStroke.Color = Color3.fromRGB(255, 197, 104)
+dailySpinStroke.Thickness = 1
+dailySpinStroke.Transparency = 0.1
+dailySpinStroke.Parent = dailySpinFrame
+
+local dailySpinTitle = makeLabel(dailySpinFrame, "DailySpinTitle", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 8), "Daily Spin", 18, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
+dailySpinTitle.ZIndex = 23
+local dailySpinSubtitle = makeLabel(dailySpinFrame, "DailySpinSubtitle", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 32), "Spin once for a cash reward.", 13, Color3.fromRGB(218, 225, 238), Enum.Font.GothamSemibold)
+dailySpinSubtitle.ZIndex = 23
+
+local dailySpinGrid = Instance.new("Frame")
+dailySpinGrid.Name = "DailySpinGrid"
+dailySpinGrid.Size = UDim2.fromOffset(372, 112)
+dailySpinGrid.Position = UDim2.fromOffset(10, 56)
+dailySpinGrid.BackgroundTransparency = 1
+dailySpinGrid.ZIndex = 23
+dailySpinGrid.Parent = dailySpinFrame
+
+local dailySpinGridLayout = Instance.new("UIGridLayout")
+dailySpinGridLayout.CellSize = UDim2.fromOffset(116, 32)
+dailySpinGridLayout.CellPadding = UDim2.fromOffset(10, 8)
+dailySpinGridLayout.FillDirectionMaxCells = 3
+dailySpinGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+dailySpinGridLayout.Parent = dailySpinGrid
+
+local dailySpinSlots = {}
+for index = 1, 9 do
+	local slot = Instance.new("TextLabel")
+	slot.Name = string.format("DailySpinSlot%d", index)
+	slot.BackgroundColor3 = Color3.fromRGB(42, 50, 67)
+	slot.TextColor3 = Color3.fromRGB(255, 255, 255)
+	slot.TextSize = 15
+	slot.Font = Enum.Font.GothamBold
+	slot.TextWrapped = true
+	slot.ZIndex = 23
+	slot.Parent = dailySpinGrid
+
+	local slotCorner = Instance.new("UICorner")
+	slotCorner.CornerRadius = UDim.new(0, 10)
+	slotCorner.Parent = slot
+
+	local slotStroke = Instance.new("UIStroke")
+	slotStroke.Name = "SlotStroke"
+	slotStroke.Color = Color3.fromRGB(90, 103, 128)
+	slotStroke.Thickness = 1
+	slotStroke.Transparency = 0.15
+	slotStroke.Parent = slot
+
+	dailySpinSlots[index] = slot
+end
+
+local dailySpinButton = makeButton(dailySpinFrame, "DailySpinButton", UDim2.fromOffset(182, 38), UDim2.new(1, -194, 0, 64), "Spin Now", Color3.fromRGB(255, 197, 104), Color3.fromRGB(49, 31, 16))
+dailySpinButton.ZIndex = 23
+local dailySpinStatus = makeLabel(dailySpinFrame, "DailySpinStatus", UDim2.fromOffset(182, 60), UDim2.new(1, -194, 0, 108), "Available now", 14, Color3.fromRGB(231, 238, 248), Enum.Font.GothamSemibold)
+dailySpinStatus.TextWrapped = true
+dailySpinStatus.TextYAlignment = Enum.TextYAlignment.Top
+dailySpinStatus.ZIndex = 23
+
 local latestState = nil
 local startMenuOpen = true
 local startMenuTab = "start"
 local musicMuted = false
+local dailySpinBusy = false
 
 local function getToastColor(tone: string?): Color3
 	if tone == "warning" then
@@ -471,7 +549,7 @@ local function closeStartMenu()
 	startMenuOverlay.Visible = false
 	startMenuOverlay.BackgroundTransparency = 0.22
 	startMenuPanel.BackgroundTransparency = 0
-	startMenuPanel.Size = UDim2.fromOffset(560, 360)
+	startMenuPanel.Size = UDim2.fromOffset(640, 480)
 end
 
 local function openStartMenu()
@@ -483,14 +561,70 @@ local function openStartMenu()
 	startMenuOverlay.Visible = true
 	startMenuOverlay.BackgroundTransparency = 1
 	startMenuPanel.BackgroundTransparency = 0.18
-	startMenuPanel.Size = UDim2.fromOffset(530, 340)
+	startMenuPanel.Size = UDim2.fromOffset(610, 450)
 	TweenService:Create(startMenuOverlay, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0.22,
 	}):Play()
 	TweenService:Create(startMenuPanel, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 		BackgroundTransparency = 0,
-		Size = UDim2.fromOffset(560, 360),
+		Size = UDim2.fromOffset(640, 480),
 	}):Play()
+end
+
+local function updateDailySpinView(state)
+	local slots = state and state.dailySpinSlots or nil
+	for index, slot in dailySpinSlots do
+		local reward = slots and slots[index] or nil
+		if reward then
+			slot.Text = string.format("%s\n%s", reward.name, formatChance(reward.chancePercent))
+			slot.BackgroundColor3 = reward.color:Lerp(Color3.fromRGB(32, 39, 52), 0.7)
+			local stroke = slot:FindFirstChild("SlotStroke")
+			if stroke and stroke:IsA("UIStroke") then
+				stroke.Color = reward.color
+			end
+		else
+			slot.Text = "Locked"
+			slot.BackgroundColor3 = Color3.fromRGB(42, 50, 67)
+			local stroke = slot:FindFirstChild("SlotStroke")
+			if stroke and stroke:IsA("UIStroke") then
+				stroke.Color = Color3.fromRGB(90, 103, 128)
+			end
+		end
+	end
+
+	local enabled = state and state.dailySpinEnabled == true
+	local claimed = state and state.dailySpinClaimedToday == true
+	local lastReward = state and state.dailySpinLastReward or 0
+	dailySpinFrame.Visible = startMenuTab == "start" and enabled
+	dailySpinButton.Visible = enabled
+	dailySpinStatus.Visible = enabled
+	if not enabled then
+		return
+	end
+
+	if dailySpinBusy then
+		dailySpinButton.Active = false
+		dailySpinButton.AutoButtonColor = false
+		dailySpinButton.Text = "Spinning..."
+		dailySpinButton.BackgroundColor3 = Color3.fromRGB(162, 167, 176)
+		dailySpinStatus.Text = "Rolling your prize..."
+	elseif claimed then
+		dailySpinButton.Active = false
+		dailySpinButton.AutoButtonColor = false
+		dailySpinButton.Text = "Claimed Today"
+		dailySpinButton.BackgroundColor3 = Color3.fromRGB(86, 104, 128)
+		if lastReward > 0 then
+			dailySpinStatus.Text = string.format("Already claimed this session.\nLast reward: %s", formatCash(lastReward))
+		else
+			dailySpinStatus.Text = "Already claimed this session."
+		end
+	else
+		dailySpinButton.Active = true
+		dailySpinButton.AutoButtonColor = true
+		dailySpinButton.Text = "Spin Now"
+		dailySpinButton.BackgroundColor3 = Color3.fromRGB(255, 197, 104)
+		dailySpinStatus.Text = "Available now.\nSpin for a weighted cash reward."
+	end
 end
 
 local function setMenuTab(tabName: string)
@@ -505,19 +639,24 @@ local function setMenuTab(tabName: string)
 	styleTab(settingsButton, tabName == "settings")
 	styleTab(startNowButton, tabName == "start")
 	settingsActionButton.Visible = false
+	dailySpinFrame.Visible = false
 
 	local tycoonCapacity = latestState and latestState.competition and latestState.competition.tycoonCapacity or 8
 	if tabName == "start" then
 		menuBodyTitle.Text = "Start Now"
+		menuBodyText.Size = UDim2.new(1, -24, 0, 56)
 		menuBodyText.Text = "Spawn in the center, pick any open tycoon, use the starter dropper, and start climbing the factory floors."
+		updateDailySpinView(latestState)
 	elseif tabName == "info" then
 		menuBodyTitle.Text = "Information"
+		menuBodyText.Size = UDim2.new(1, -24, 1, -68)
 		menuBodyText.Text = string.format(
 			"This server supports %d tycoons around the center hub.\n\nControls:\n- Walk to a claim pad to own a tycoon\n- Tap the starter dropper before automation\n- Hold Shift to sprint\n- Use owner door buttons to open your gate\n\nGoal:\nBuild your income, unlock the next floors, arm your base, and keep expanding.",
 			tycoonCapacity
 		)
 	else
 		menuBodyTitle.Text = "Settings"
+		menuBodyText.Size = UDim2.new(1, -24, 1, -68)
 		menuBodyText.Text = "Local settings only.\n\nYou can mute the background music here. More toggles can be added later without affecting server gameplay."
 		settingsActionButton.Visible = true
 		applyMusicToggle()
@@ -544,6 +683,38 @@ end)
 settingsActionButton.MouseButton1Click:Connect(function()
 	musicMuted = not musicMuted
 	applyMusicToggle()
+end)
+
+dailySpinButton.MouseButton1Click:Connect(function()
+	if dailySpinBusy then
+		return
+	end
+
+	dailySpinBusy = true
+	updateDailySpinView(latestState)
+
+	local success, result = pcall(function()
+		return requestDailySpinFunction:InvokeServer()
+	end)
+
+	dailySpinBusy = false
+	if not success then
+		showToast("Daily Spin", "The daily spin could not be completed right now.", "warning")
+		updateDailySpinView(latestState)
+		return
+	end
+
+	if not result or result.ok ~= true then
+		if result and result.reason == "already_claimed" then
+			showToast("Daily Spin", "You already used the daily spin for this session.", "info")
+		elseif result and result.reason == "disabled" then
+			showToast("Daily Spin", "The daily spin is disabled right now.", "warning")
+		else
+			showToast("Daily Spin", "The daily spin could not be completed.", "warning")
+		end
+	end
+
+	updateDailySpinView(latestState)
 end)
 
 local function getProgressText(state)
@@ -784,6 +955,8 @@ local function updateUi(state)
 	else
 		serverSummaryLabel.Text = string.format("Owners %d | Players %d", claimedPlots, playerCount)
 	end
+
+	updateDailySpinView(state)
 end
 
 stateRemote.OnClientEvent:Connect(updateUi)

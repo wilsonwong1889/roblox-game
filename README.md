@@ -18,6 +18,7 @@ Week 6 Ring Layout Expansion
 - expanded shared map with center spawn, center decorations, and corner decorations
 - perimeter NPC soldier patrols outside the tycoon walls
 - wall health, wall destruction, and paid wall rebuilding
+- start-menu daily spin with weighted cash rewards
 - earnings-per-second validation in the HUD and payloads
 - live owners/open-plots summary for larger server reads
 - smoke tests and self-tests

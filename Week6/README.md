@@ -18,6 +18,7 @@ Week 6 expands the game into an 8-tycoon ring layout.
 - starter manual dropper plus first-floor and second-floor progression
 - fortified perimeter walls with health and paid rebuilds
 - roaming NPC soldier patrols outside the tycoon walls
+- start-menu daily spin with weighted cash rewards
 
 ## Validation Focus
 
@@ -29,3 +30,4 @@ Week 6 expands the game into an 8-tycoon ring layout.
 - second-floor access
 - wall damage, destruction, and paid repairs
 - NPC soldier spawning and roaming around the perimeter
+- daily spin GUI and weighted reward payout

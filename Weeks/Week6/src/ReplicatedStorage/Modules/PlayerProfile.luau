@@ -21,6 +21,8 @@ export type PlayerData = {
 	PurchasedUpgrades: { [string]: boolean },
 	VipStarterPackOwned: boolean,
 	VipStarterPackGranted: boolean,
+	DailySpinClaimKey: string?,
+	DailySpinLastReward: number,
 }
 
 local playerProfiles: { [Player]: PlayerData } = {}
@@ -51,6 +53,11 @@ local function getThirdDropperIds(): { string }
 	return GameConfig.getThirdDropperIds()
 end
 
+local function getUtcDayKey(): string
+	local now = os.date("!*t")
+	return string.format("%04d-%03d", now.year, now.yday)
+end
+
 function PlayerProfile.createProfile(player: Player): PlayerData
 	local profile: PlayerData = {
 		UserId = player.UserId,
@@ -65,6 +72,8 @@ function PlayerProfile.createProfile(player: Player): PlayerData
 		PurchasedUpgrades = {},
 		VipStarterPackOwned = false,
 		VipStarterPackGranted = false,
+		DailySpinClaimKey = nil,
+		DailySpinLastReward = 0,
 	}
 
 	playerProfiles[player] = profile
@@ -204,6 +213,26 @@ function PlayerProfile.hasReceivedVipStarterPack(player: Player): boolean
 	return profile ~= nil and profile.VipStarterPackGranted == true
 end
 
+function PlayerProfile.canUseDailySpin(player: Player, dayKey: string): boolean
+	local profile = playerProfiles[player]
+	return profile ~= nil and profile.DailySpinClaimKey ~= dayKey
+end
+
+function PlayerProfile.markDailySpinClaimed(player: Player, dayKey: string, rewardAmount: number)
+	local profile = playerProfiles[player]
+	if not profile then
+		return
+	end
+
+	profile.DailySpinClaimKey = dayKey
+	profile.DailySpinLastReward = rewardAmount
+end
+
+function PlayerProfile.getDailySpinLastReward(player: Player): number
+	local profile = playerProfiles[player]
+	return if profile then profile.DailySpinLastReward else 0
+end
+
 function PlayerProfile.hasUpgrade(player: Player, upgradeId: string): boolean
 	local profile = playerProfiles[player]
 	return profile ~= nil and profile.PurchasedUpgrades[upgradeId] == true
@@ -295,6 +324,8 @@ function PlayerProfile.getStatePayload(player: Player)
 	local hasTycoon = profile.TycoonId ~= nil
 	local purchasedUpgrades = copyUpgrades(profile.PurchasedUpgrades)
 	local earningsPerSecond = PlayerProfile.getEarningsPerSecond(player)
+	local dailySpinDayKey = getUtcDayKey()
+	local dailySpinClaimedToday = profile.DailySpinClaimKey == dailySpinDayKey
 	local hasAllDroppers = PlayerProfile.hasAllDroppers(player)
 	local upperDropperIds = getUpperDropperIds()
 	local upperDropperCount = PlayerProfile.getPurchasedUpperDropperCount(player)
@@ -403,6 +434,11 @@ function PlayerProfile.getStatePayload(player: Player)
 		ownerName = profile.DisplayName,
 		vipStarterPackOwned = profile.VipStarterPackOwned,
 		vipStarterPackGranted = profile.VipStarterPackGranted,
+		dailySpinEnabled = GameConfig.DAILY_SPIN_ENABLED,
+		dailySpinSlots = GameConfig.getDailySpinSlots(),
+		dailySpinClaimedToday = dailySpinClaimedToday,
+		dailySpinClaimKey = profile.DailySpinClaimKey,
+		dailySpinLastReward = profile.DailySpinLastReward,
 		purchasedUpgrades = purchasedUpgrades,
 		statusText = statusText,
 	}

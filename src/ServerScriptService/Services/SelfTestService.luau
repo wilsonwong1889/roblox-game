@@ -28,6 +28,12 @@ local function testEightTycoonBaselineConfig()
 	assertCondition(GameConfig.VIP_STARTER_PACK.GAMEPASS_ID == 1754764623, "VIP starter pack should use the configured pass id")
 	assertCondition(GameConfig.VIP_STARTER_PACK.PRICE_ROBUX == 500, "VIP starter pack should advertise the configured Robux price")
 	assertCondition(GameConfig.VIP_STARTER_PACK.CASH_BONUS > 0, "VIP starter pack should grant positive bonus cash")
+	assertCondition(GameConfig.DAILY_SPIN_ENABLED == true, "Daily spin should be enabled in the current build")
+	assertCondition(#GameConfig.DAILY_SPIN_REWARDS == 3, "Daily spin should expose three weighted rewards")
+	assertCondition(GameConfig.DAILY_SPIN_REWARDS[1].amount == 10000 and GameConfig.DAILY_SPIN_REWARDS[1].chancePercent == 89 and GameConfig.DAILY_SPIN_REWARDS[1].displayCount == 6, "Daily spin should keep the 10k reward at 89% across six tiles")
+	assertCondition(GameConfig.DAILY_SPIN_REWARDS[2].amount == 100000 and GameConfig.DAILY_SPIN_REWARDS[2].chancePercent == 10 and GameConfig.DAILY_SPIN_REWARDS[2].displayCount == 2, "Daily spin should keep the 100k reward at 10% across two tiles")
+	assertCondition(GameConfig.DAILY_SPIN_REWARDS[3].amount == 1000000 and GameConfig.DAILY_SPIN_REWARDS[3].chancePercent == 1 and GameConfig.DAILY_SPIN_REWARDS[3].displayCount == 1, "Daily spin should keep the 1m reward at 1% across one tile")
+	assertCondition(#GameConfig.getDailySpinSlots() == 9, "Daily spin should render nine total prize tiles")
 	assertCondition(GameConfig.STARTING_STASH_CASH == 0, "Baseline stash cash should start empty")
 	assertCondition(GameConfig.STARTING_VAULT_CASH == 0, "Baseline vault cash should start empty")
 	assertCondition(type(GameConfig.BACKGROUND_MUSIC_ENABLED) == "boolean", "Background music toggle should be configured")
@@ -493,6 +499,27 @@ local function testVipStarterPackProfileHelpers()
 	PlayerProfile.removeProfile(fakePlayer)
 end
 
+local function testDailySpinProfileHelpers()
+	local fakePlayer = {
+		UserId = 505,
+		Name = "DailySpinTester",
+		DisplayName = "DailySpinTester",
+	} :: any
+
+	PlayerProfile.createProfile(fakePlayer)
+	local initialPayload = PlayerProfile.getStatePayload(fakePlayer)
+	assertCondition(initialPayload.dailySpinEnabled == true, "Daily spin should surface as enabled in the HUD payload")
+	assertCondition(initialPayload.dailySpinClaimedToday == false, "Fresh profiles should not start with the daily spin claimed")
+	assertCondition(#initialPayload.dailySpinSlots == 9, "HUD payload should include the nine visible daily spin slots")
+	assertCondition(PlayerProfile.canUseDailySpin(fakePlayer, "2026-077") == true, "Fresh profiles should be eligible for the daily spin")
+
+	PlayerProfile.markDailySpinClaimed(fakePlayer, "2026-077", 100000)
+	assertCondition(PlayerProfile.canUseDailySpin(fakePlayer, "2026-077") == false, "Claimed profiles should not be eligible for the same day key")
+	assertCondition(PlayerProfile.getDailySpinLastReward(fakePlayer) == 100000, "Daily spin should remember the last reward amount")
+
+	PlayerProfile.removeProfile(fakePlayer)
+end
+
 local function testOwnershipRegistry()
 	local registry = TycoonOwnershipRegistry.new()
 	local playerA = { UserId = 111, Name = "PlayerA" } :: any
@@ -515,6 +542,7 @@ function SelfTestService.run()
 	testDefaultProfileState()
 	testEconomyProfileHelpers()
 	testVipStarterPackProfileHelpers()
+	testDailySpinProfileHelpers()
 	testOwnershipRegistry()
 	print("[SelfTest] Week 6 perimeter-defense checks passed")
 end

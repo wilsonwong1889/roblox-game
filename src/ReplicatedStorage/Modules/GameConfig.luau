@@ -23,6 +23,33 @@ GameConfig.VIP_STARTER_PACK = {
 	PRICE_ROBUX = 500,
 	CASH_BONUS = 500000,
 }
+GameConfig.DAILY_SPIN_ENABLED = true
+GameConfig.DAILY_SPIN_REWARDS = {
+	{
+		id = "daily_spin_cash_small",
+		name = "$10,000",
+		amount = 10000,
+		chancePercent = 89,
+		displayCount = 6,
+		color = Color3.fromRGB(101, 233, 154),
+	},
+	{
+		id = "daily_spin_cash_medium",
+		name = "$100,000",
+		amount = 100000,
+		chancePercent = 10,
+		displayCount = 2,
+		color = Color3.fromRGB(255, 203, 96),
+	},
+	{
+		id = "daily_spin_cash_jackpot",
+		name = "$1,000,000",
+		amount = 1000000,
+		chancePercent = 1,
+		displayCount = 1,
+		color = Color3.fromRGB(255, 126, 220),
+	},
+}
 GameConfig.BACKGROUND_MUSIC_ENABLED = true
 GameConfig.BACKGROUND_MUSIC_NAME = "BackgroundMusic"
 GameConfig.BACKGROUND_MUSIC_SOUND_ID = "rbxassetid://1841461968"
@@ -805,6 +832,39 @@ function GameConfig.getWalkSpeed(player, sprinting: boolean?): number
 	end
 
 	return speed
+end
+
+function GameConfig.getDailySpinSlots(): { [number]: { id: string, name: string, amount: number, chancePercent: number, color: Color3 } }
+	local slots = {}
+
+	for _, reward in GameConfig.DAILY_SPIN_REWARDS do
+		for _ = 1, reward.displayCount do
+			table.insert(slots, {
+				id = reward.id,
+				name = reward.name,
+				amount = reward.amount,
+				chancePercent = reward.chancePercent,
+				color = reward.color,
+			})
+		end
+	end
+
+	return slots
+end
+
+function GameConfig.rollDailySpinReward(randomSource: Random?): { id: string, name: string, amount: number, chancePercent: number, displayCount: number, color: Color3 }
+	local rng = randomSource or Random.new()
+	local roll = rng:NextNumber(0, 100)
+	local cursor = 0
+
+	for _, reward in GameConfig.DAILY_SPIN_REWARDS do
+		cursor += reward.chancePercent
+		if roll <= cursor then
+			return reward
+		end
+	end
+
+	return GameConfig.DAILY_SPIN_REWARDS[#GameConfig.DAILY_SPIN_REWARDS]
 end
 
 return GameConfig
