@@ -50,6 +50,16 @@ GameConfig.DAILY_SPIN_REWARDS = {
 		color = Color3.fromRGB(255, 126, 220),
 	},
 }
+GameConfig.REDEEM_CODES = {
+	money = {
+		code = "money",
+		reward = 10000,
+	},
+	amanda = {
+		code = "amanda",
+		reward = 100000,
+	},
+}
 GameConfig.BACKGROUND_MUSIC_ENABLED = true
 GameConfig.BACKGROUND_MUSIC_NAME = "BackgroundMusic"
 GameConfig.BACKGROUND_MUSIC_SOUND_ID = "rbxassetid://1841461968"
@@ -865,6 +875,24 @@ function GameConfig.rollDailySpinReward(randomSource: Random?): { id: string, na
 	end
 
 	return GameConfig.DAILY_SPIN_REWARDS[#GameConfig.DAILY_SPIN_REWARDS]
+end
+
+function GameConfig.normalizeRedeemCode(rawCode: string?): string
+	if type(rawCode) ~= "string" then
+		return ""
+	end
+
+	local trimmed = string.gsub(rawCode, "^%s*(.-)%s*$", "%1")
+	return string.lower(trimmed)
+end
+
+function GameConfig.getRedeemCode(rawCode: string?)
+	local normalized = GameConfig.normalizeRedeemCode(rawCode)
+	if normalized == "" then
+		return nil
+	end
+
+	return GameConfig.REDEEM_CODES[normalized]
 end
 
 return GameConfig

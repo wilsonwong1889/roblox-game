@@ -34,6 +34,9 @@ local function testEightTycoonBaselineConfig()
 	assertCondition(GameConfig.DAILY_SPIN_REWARDS[2].amount == 100000 and GameConfig.DAILY_SPIN_REWARDS[2].chancePercent == 10 and GameConfig.DAILY_SPIN_REWARDS[2].displayCount == 2, "Daily spin should keep the 100k reward at 10% across two tiles")
 	assertCondition(GameConfig.DAILY_SPIN_REWARDS[3].amount == 1000000 and GameConfig.DAILY_SPIN_REWARDS[3].chancePercent == 1 and GameConfig.DAILY_SPIN_REWARDS[3].displayCount == 1, "Daily spin should keep the 1m reward at 1% across one tile")
 	assertCondition(#GameConfig.getDailySpinSlots() == 9, "Daily spin should render nine total prize tiles")
+	assertCondition(GameConfig.getRedeemCode("money").reward == 10000, "Redeem code money should grant 10,000 cash")
+	assertCondition(GameConfig.getRedeemCode("  AMANDA ").reward == 100000, "Redeem code amanda should be case-insensitive and grant 100,000 cash")
+	assertCondition(GameConfig.getRedeemCode("invalid") == nil, "Unknown redeem codes should resolve to nil")
 	assertCondition(GameConfig.STARTING_STASH_CASH == 0, "Baseline stash cash should start empty")
 	assertCondition(GameConfig.STARTING_VAULT_CASH == 0, "Baseline vault cash should start empty")
 	assertCondition(type(GameConfig.BACKGROUND_MUSIC_ENABLED) == "boolean", "Background music toggle should be configured")
@@ -520,6 +523,21 @@ local function testDailySpinProfileHelpers()
 	PlayerProfile.removeProfile(fakePlayer)
 end
 
+local function testRedeemCodeProfileHelpers()
+	local fakePlayer = {
+		UserId = 606,
+		Name = "RedeemTester",
+		DisplayName = "RedeemTester",
+	} :: any
+
+	PlayerProfile.createProfile(fakePlayer)
+	assertCondition(not PlayerProfile.hasRedeemedCode(fakePlayer, "money"), "Fresh profiles should not start with redeemed codes")
+	PlayerProfile.markCodeRedeemed(fakePlayer, "money")
+	assertCondition(PlayerProfile.hasRedeemedCode(fakePlayer, "money"), "Redeemed codes should be tracked on the profile")
+	assertCondition(not PlayerProfile.hasRedeemedCode(fakePlayer, "amanda"), "Code tracking should remain per code")
+	PlayerProfile.removeProfile(fakePlayer)
+end
+
 local function testOwnershipRegistry()
 	local registry = TycoonOwnershipRegistry.new()
 	local playerA = { UserId = 111, Name = "PlayerA" } :: any
@@ -543,6 +561,7 @@ function SelfTestService.run()
 	testEconomyProfileHelpers()
 	testVipStarterPackProfileHelpers()
 	testDailySpinProfileHelpers()
+	testRedeemCodeProfileHelpers()
 	testOwnershipRegistry()
 	print("[SelfTest] Week 6 perimeter-defense checks passed")
 end

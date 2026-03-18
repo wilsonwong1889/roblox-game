@@ -12,6 +12,7 @@ local stateRemote = remotesFolder:WaitForChild("StateUpdate") :: RemoteEvent
 local messageRemote = remotesFolder:WaitForChild("UiMessage") :: RemoteEvent
 local requestStateFunction = remotesFolder:WaitForChild("RequestState") :: RemoteFunction
 local requestDailySpinFunction = remotesFolder:WaitForChild("RequestDailySpin") :: RemoteFunction
+local requestCodeRedeemFunction = remotesFolder:WaitForChild("RequestCodeRedeem") :: RemoteFunction
 local sprintRemote = remotesFolder:WaitForChild("SprintStateChanged") :: RemoteEvent
 
 for _, hudName in { "Week6HUD", "Week5HUD", "Week4HUD", "Week3HUD", "Week2HUD" } do
@@ -253,6 +254,63 @@ toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 toastLayout.Parent = toastHolder
 
+local codePanel = Instance.new("Frame")
+codePanel.Name = "CodePanel"
+codePanel.Size = UDim2.fromOffset(286, 116)
+codePanel.AnchorPoint = Vector2.new(1, 1)
+codePanel.Position = UDim2.new(1, -22, 1, -22)
+codePanel.BackgroundColor3 = Color3.fromRGB(18, 23, 31)
+codePanel.BackgroundTransparency = 0.05
+codePanel.ZIndex = 18
+codePanel.Parent = screenGui
+
+local codePanelCorner = Instance.new("UICorner")
+codePanelCorner.CornerRadius = UDim.new(0, 16)
+codePanelCorner.Parent = codePanel
+
+local codePanelStroke = Instance.new("UIStroke")
+codePanelStroke.Color = Color3.fromRGB(118, 176, 255)
+codePanelStroke.Thickness = 1
+codePanelStroke.Transparency = 0.08
+codePanelStroke.Parent = codePanel
+
+local codeTitleLabel = makeLabel(codePanel, "CodeTitleLabel", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(10, 8), "Redeem Code", 18, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
+codeTitleLabel.ZIndex = 19
+
+local codeHintLabel = makeLabel(codePanel, "CodeHintLabel", UDim2.new(1, -20, 0, 16), UDim2.fromOffset(10, 32), "Try: money or amanda", 12, Color3.fromRGB(198, 208, 224), Enum.Font.GothamSemibold)
+codeHintLabel.ZIndex = 19
+
+local codeInput = Instance.new("TextBox")
+codeInput.Name = "CodeInput"
+codeInput.Size = UDim2.new(1, -110, 0, 34)
+codeInput.Position = UDim2.fromOffset(10, 56)
+codeInput.BackgroundColor3 = Color3.fromRGB(33, 40, 54)
+codeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+codeInput.PlaceholderColor3 = Color3.fromRGB(159, 170, 188)
+codeInput.PlaceholderText = "Enter code"
+codeInput.Text = ""
+codeInput.ClearTextOnFocus = false
+codeInput.Font = Enum.Font.GothamSemibold
+codeInput.TextSize = 15
+codeInput.ZIndex = 19
+codeInput.Parent = codePanel
+
+local codeInputCorner = Instance.new("UICorner")
+codeInputCorner.CornerRadius = UDim.new(0, 12)
+codeInputCorner.Parent = codeInput
+
+local codeInputStroke = Instance.new("UIStroke")
+codeInputStroke.Color = Color3.fromRGB(80, 93, 118)
+codeInputStroke.Thickness = 1
+codeInputStroke.Transparency = 0.1
+codeInputStroke.Parent = codeInput
+
+local codeRedeemButton = makeButton(codePanel, "CodeRedeemButton", UDim2.fromOffset(84, 34), UDim2.new(1, -94, 0, 56), "Redeem", Color3.fromRGB(98, 245, 182), Color3.fromRGB(19, 36, 30))
+codeRedeemButton.ZIndex = 19
+
+local codeStatusLabel = makeLabel(codePanel, "CodeStatusLabel", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 92), "Codes grant wallet cash instantly.", 12, Color3.fromRGB(198, 208, 224), Enum.Font.GothamSemibold)
+codeStatusLabel.ZIndex = 19
+
 local startMenuOverlay = Instance.new("Frame")
 startMenuOverlay.Name = "StartMenuOverlay"
 startMenuOverlay.Size = UDim2.fromScale(1, 1)
@@ -426,6 +484,7 @@ local startMenuOpen = true
 local startMenuTab = "start"
 local musicMuted = false
 local dailySpinBusy = false
+local codeRedeemBusy = false
 
 local function getToastColor(tone: string?): Color3
 	if tone == "warning" then
@@ -478,6 +537,10 @@ local function showToast(title: string, body: string, tone: string?)
 		fadeOut.Completed:Wait()
 		toast:Destroy()
 	end)
+end
+
+local function trimText(value: string): string
+	return string.gsub(value, "^%s*(.-)%s*$", "%1")
 end
 
 local isSprinting = false
@@ -683,6 +746,65 @@ end)
 settingsActionButton.MouseButton1Click:Connect(function()
 	musicMuted = not musicMuted
 	applyMusicToggle()
+end)
+
+local function updateCodeRedeemUi()
+	if codeRedeemBusy then
+		codeRedeemButton.Active = false
+		codeRedeemButton.AutoButtonColor = false
+		codeRedeemButton.Text = "..."
+		codeRedeemButton.BackgroundColor3 = Color3.fromRGB(148, 156, 168)
+	else
+		codeRedeemButton.Active = true
+		codeRedeemButton.AutoButtonColor = true
+		codeRedeemButton.Text = "Redeem"
+		codeRedeemButton.BackgroundColor3 = Color3.fromRGB(98, 245, 182)
+	end
+end
+
+local function submitRedeemCode()
+	local rawCode = trimText(codeInput.Text)
+	if rawCode == "" or codeRedeemBusy then
+		if rawCode == "" then
+			showToast("Redeem Code", "Enter a code first.", "warning")
+		end
+		return
+	end
+
+	codeRedeemBusy = true
+	updateCodeRedeemUi()
+	local success, result = pcall(function()
+		return requestCodeRedeemFunction:InvokeServer(rawCode)
+	end)
+	codeRedeemBusy = false
+	updateCodeRedeemUi()
+
+	if not success then
+		codeStatusLabel.Text = "Code redeem failed. Try again."
+		showToast("Redeem Code", "Code redeem failed right now.", "warning")
+		return
+	end
+
+	if result and result.ok == true then
+		codeInput.Text = ""
+		codeStatusLabel.Text = string.format("Redeemed %s for %s.", result.code or rawCode, formatCash(result.reward))
+		return
+	end
+
+	if result and result.reason == "already_redeemed" then
+		codeStatusLabel.Text = string.format("Code %s already used.", result.code or rawCode)
+	elseif result and result.reason == "invalid_code" then
+		codeStatusLabel.Text = "That code is invalid."
+	else
+		codeStatusLabel.Text = "Code redeem unavailable right now."
+	end
+end
+
+codeRedeemButton.MouseButton1Click:Connect(submitRedeemCode)
+codeInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		submitRedeemCode()
+	end
 end)
 
 dailySpinButton.MouseButton1Click:Connect(function()
@@ -977,3 +1099,4 @@ end)
 
 setMenuTab("start")
 applyMusicToggle()
+updateCodeRedeemUi()

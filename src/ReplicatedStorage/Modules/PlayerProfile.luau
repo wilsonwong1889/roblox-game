@@ -19,6 +19,7 @@ export type PlayerData = {
 	CollectorStoredCash: number,
 	TotalEarned: number,
 	PurchasedUpgrades: { [string]: boolean },
+	RedeemedCodes: { [string]: boolean },
 	VipStarterPackOwned: boolean,
 	VipStarterPackGranted: boolean,
 	DailySpinClaimKey: string?,
@@ -70,6 +71,7 @@ function PlayerProfile.createProfile(player: Player): PlayerData
 		CollectorStoredCash = 0,
 		TotalEarned = 0,
 		PurchasedUpgrades = {},
+		RedeemedCodes = {},
 		VipStarterPackOwned = false,
 		VipStarterPackGranted = false,
 		DailySpinClaimKey = nil,
@@ -186,6 +188,18 @@ function PlayerProfile.markUpgradePurchased(player: Player, upgradeId: string)
 	local profile = playerProfiles[player]
 	if profile then
 		profile.PurchasedUpgrades[upgradeId] = true
+	end
+end
+
+function PlayerProfile.hasRedeemedCode(player: Player, code: string): boolean
+	local profile = playerProfiles[player]
+	return profile ~= nil and profile.RedeemedCodes[code] == true
+end
+
+function PlayerProfile.markCodeRedeemed(player: Player, code: string)
+	local profile = playerProfiles[player]
+	if profile then
+		profile.RedeemedCodes[code] = true
 	end
 end
 

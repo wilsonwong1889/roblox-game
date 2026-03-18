@@ -118,6 +118,19 @@ Expected output:
 7. Confirm the button changes to the claimed state after use.
 8. Confirm re-pressing it in the same session does not pay again.
 
+## Redeem Code Tests
+
+1. Join the game and look at the bottom-right corner of the HUD.
+2. Confirm a small `Redeem Code` panel is visible.
+3. Enter `money` and redeem it.
+4. Confirm wallet cash increases by `$10,000`.
+5. Enter `money` again.
+6. Confirm it does not pay a second time in the same session.
+7. Enter `amanda` and redeem it.
+8. Confirm wallet cash increases by `$100,000`.
+9. Enter an invalid code.
+10. Confirm the UI shows the code is invalid and no cash is awarded.
+
 ## Second-Floor Tests
 
 1. Use `Developer Full Build` or buy through the chain.

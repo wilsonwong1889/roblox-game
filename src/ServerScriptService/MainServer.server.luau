@@ -33,6 +33,10 @@ local dailySpinFunction = remotesFolder:FindFirstChild("RequestDailySpin") or In
 dailySpinFunction.Name = "RequestDailySpin"
 dailySpinFunction.Parent = remotesFolder
 
+local redeemCodeFunction = remotesFolder:FindFirstChild("RequestCodeRedeem") or Instance.new("RemoteFunction")
+redeemCodeFunction.Name = "RequestCodeRedeem"
+redeemCodeFunction.Parent = remotesFolder
+
 local sprintRemote = remotesFolder:FindFirstChild("SprintStateChanged") or Instance.new("RemoteEvent")
 sprintRemote.Name = "SprintStateChanged"
 sprintRemote.Parent = remotesFolder
@@ -948,6 +952,52 @@ dailySpinFunction.OnServerInvoke = function(player)
 		reward = reward.amount,
 		rewardName = reward.name,
 		dayKey = dayKey,
+	}
+end
+
+redeemCodeFunction.OnServerInvoke = function(player, rawCode)
+	local profile = PlayerProfile.getProfile(player)
+	if not profile then
+		return {
+			ok = false,
+			reason = "missing_profile",
+		}
+	end
+
+	local rewardDefinition = GameConfig.getRedeemCode(rawCode)
+	if not rewardDefinition then
+		sendUiMessage(player, "Invalid Code", "That code does not exist.", "warning")
+		return {
+			ok = false,
+			reason = "invalid_code",
+		}
+	end
+
+	if PlayerProfile.hasRedeemedCode(player, rewardDefinition.code) then
+		sendUiMessage(player, "Code Used", string.format("You already redeemed code: %s", rewardDefinition.code), "info")
+		return {
+			ok = false,
+			reason = "already_redeemed",
+			code = rewardDefinition.code,
+		}
+	end
+
+	PlayerProfile.markCodeRedeemed(player, rewardDefinition.code)
+	PlayerProfile.addWalletCash(player, rewardDefinition.reward)
+	updateLeaderstats(player)
+	sendStateUpdate(player)
+	broadcastAllStates()
+	sendUiMessage(
+		player,
+		"Code Redeemed",
+		string.format("Code %s gave you $%d.", rewardDefinition.code, rewardDefinition.reward),
+		"success"
+	)
+
+	return {
+		ok = true,
+		code = rewardDefinition.code,
+		reward = rewardDefinition.reward,
 	}
 end
 
