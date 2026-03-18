@@ -90,7 +90,7 @@ screenGui.Parent = playerGui
 
 local root = Instance.new("Frame")
 root.Name = "Root"
-root.Size = UDim2.fromOffset(488, 360)
+root.Size = UDim2.fromOffset(488, 410)
 root.Position = UDim2.fromOffset(20, 20)
 root.BackgroundColor3 = Color3.fromRGB(17, 21, 29)
 root.BackgroundTransparency = 0.06
@@ -133,7 +133,7 @@ serverSummaryLabel.Position = UDim2.new(1, -250, 0, 18)
 
 local statsWrap = Instance.new("Frame")
 statsWrap.Name = "StatsWrap"
-statsWrap.Size = UDim2.new(1, -24, 0, 164)
+statsWrap.Size = UDim2.new(1, -24, 0, 210)
 statsWrap.Position = UDim2.fromOffset(12, 78)
 statsWrap.BackgroundTransparency = 1
 statsWrap.Parent = root
@@ -178,11 +178,12 @@ local earnedLabel = makeStatCard(rightColumn, "EarnedLabel", 0, Color3.fromRGB(2
 local epsLabel = makeStatCard(rightColumn, "EpsLabel", 46, Color3.fromRGB(255, 178, 79), "Earnings / Sec", "$0.0")
 local clickerLabel = makeStatCard(leftColumn, "ClickerLabel", 92, Color3.fromRGB(168, 139, 255), "Starter Drop", "$0")
 local unlockLabel = makeStatCard(rightColumn, "UnlockLabel", 92, Color3.fromRGB(130, 203, 255), "Unlock State", "Locked")
+local killsLabel = makeStatCard(rightColumn, "KillsLabel", 138, Color3.fromRGB(255, 112, 112), "Kills", "0")
 
 local bottomWrap = Instance.new("Frame")
 bottomWrap.Name = "BottomWrap"
 bottomWrap.Size = UDim2.new(1, -24, 0, 100)
-bottomWrap.Position = UDim2.fromOffset(12, 252)
+bottomWrap.Position = UDim2.fromOffset(12, 298)
 bottomWrap.BackgroundTransparency = 1
 bottomWrap.Parent = root
 
@@ -994,6 +995,7 @@ local function updateUi(state)
 	local walletCash = state.walletCash or 0
 	local collectorStored = state.collectorStored or state.collectorStoredCash or 0
 	local totalEarned = state.totalEarned or 0
+	local kills = state.kills or 0
 	local earningsPerSecond = state.earningsPerSecond or 0
 	local earningsPerSecondText = state.earningsPerSecondText or formatRate(earningsPerSecond)
 
@@ -1011,6 +1013,7 @@ local function updateUi(state)
 	collectorLabel.Text = string.format("Collector: %s", formatCash(collectorStored))
 	earnedLabel.Text = string.format("Total Earned: %s", formatCash(totalEarned))
 	epsLabel.Text = string.format("Earnings / Sec: %s", earningsPerSecondText)
+	killsLabel.Text = string.format("Kills: %d", roundCount(kills))
 
 	local clickerCash = state.clickerCashPerTap or state.clickerCashPerClick or state.clickerIncome or state.clickerValue or state.startingClickerValue or 0
 	clickerLabel.Text = string.format("Starter Drop: %s", formatCash(clickerCash))

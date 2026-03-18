@@ -3,9 +3,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Modules.GameConfig)
+local PlayerProfile = require(ReplicatedStorage.Modules.PlayerProfile)
 local TycoonService = require(script.Parent.TycoonService)
 
 local WeaponService = {}
+WeaponService.KillAwarded = Instance.new("BindableEvent")
 
 type WeaponConfig = {
 	toolName: string,
@@ -27,7 +29,7 @@ local WEAPONS: { [string]: WeaponConfig } = {
 		handleSize = Vector3.new(1, 3.2, 0.6),
 		handleColor = Color3.fromRGB(48, 52, 58),
 		accentColor = Color3.fromRGB(210, 220, 235),
-		damage = 35,
+		damage = 25,
 		range = 6,
 		cooldown = 0.7,
 	},
@@ -37,7 +39,7 @@ local WEAPONS: { [string]: WeaponConfig } = {
 		handleSize = Vector3.new(1.2, 2.2, 4.6),
 		handleColor = Color3.fromRGB(82, 255, 171),
 		accentColor = Color3.fromRGB(37, 64, 52),
-		damage = 22,
+		damage = 18,
 		range = 180,
 		cooldown = 0.24,
 	},
@@ -47,7 +49,7 @@ local WEAPONS: { [string]: WeaponConfig } = {
 		handleSize = Vector3.new(1.4, 1.4, 6.4),
 		handleColor = Color3.fromRGB(255, 164, 96),
 		accentColor = Color3.fromRGB(70, 44, 28),
-		damage = 95,
+		damage = 60,
 		range = 240,
 		cooldown = 1.8,
 		radius = 18,
@@ -56,6 +58,7 @@ local WEAPONS: { [string]: WeaponConfig } = {
 }
 
 local activationDebounces: { [number]: { [string]: number } } = {}
+local humanoidDamageLedger = setmetatable({}, { __mode = "k" })
 
 local function getWeaponConfig(upgradeId: string): WeaponConfig?
 	return WEAPONS[upgradeId]
@@ -158,6 +161,64 @@ local function dealDamageToHumanoids(humanoids: { Humanoid }, damage: number)
 	end
 end
 
+local function getDamageState(humanoid: Humanoid)
+	local state = humanoidDamageLedger[humanoid]
+	if state then
+		return state
+	end
+
+	state = {
+		attacker = nil,
+		lastHitAt = 0,
+		diedConnection = nil,
+		ancestryConnection = nil,
+	}
+
+	state.diedConnection = humanoid.Died:Connect(function()
+		local attacker = state.attacker
+		if attacker and (os.clock() - state.lastHitAt) <= 8 then
+			PlayerProfile.addKill(attacker, 1)
+			WeaponService.KillAwarded:Fire(attacker, humanoid.Parent)
+		end
+
+		if state.diedConnection then
+			state.diedConnection:Disconnect()
+		end
+		if state.ancestryConnection then
+			state.ancestryConnection:Disconnect()
+		end
+		humanoidDamageLedger[humanoid] = nil
+	end)
+
+	state.ancestryConnection = humanoid.AncestryChanged:Connect(function(_, parent)
+		if parent ~= nil then
+			return
+		end
+
+		if state.diedConnection then
+			state.diedConnection:Disconnect()
+		end
+		if state.ancestryConnection then
+			state.ancestryConnection:Disconnect()
+		end
+		humanoidDamageLedger[humanoid] = nil
+	end)
+
+	humanoidDamageLedger[humanoid] = state
+	return state
+end
+
+local function applyTrackedDamage(player: Player, humanoid: Humanoid, damage: number)
+	if humanoid.Health <= 0 then
+		return
+	end
+
+	local state = getDamageState(humanoid)
+	state.attacker = player
+	state.lastHitAt = os.clock()
+	humanoid:TakeDamage(damage)
+end
+
 local function damageWallPart(part: BasePart?, damage: number)
 	if not part or damage <= 0 then
 		return
@@ -223,7 +284,9 @@ local function playKnife(player: Player, config: WeaponConfig)
 
 	local swingCenter = root.CFrame * CFrame.new(0, 0, -(config.range * 0.6))
 	local hitHumanoids = gatherHumanoidsInBox(player, swingCenter, Vector3.new(6, 6, config.range))
-	dealDamageToHumanoids(hitHumanoids, config.damage)
+	for _, targetHumanoid in hitHumanoids do
+		applyTrackedDamage(player, targetHumanoid, config.damage)
+	end
 	damageWallsInBox(player, swingCenter, Vector3.new(6, 6, config.range), config.damage)
 
 	local slash = Instance.new("Part")
@@ -259,7 +322,7 @@ local function playMoneyBlaster(player: Player, config: WeaponConfig)
 		local model = result.Instance:FindFirstAncestorOfClass("Model")
 		local hitHumanoid = model and model:FindFirstChildOfClass("Humanoid")
 		if hitHumanoid and hitHumanoid.Health > 0 then
-			hitHumanoid:TakeDamage(config.damage)
+			applyTrackedDamage(player, hitHumanoid, config.damage)
 		end
 		damageWallPart(result.Instance, config.damage)
 	end
@@ -281,7 +344,7 @@ local function explodeRocket(player: Player, position: Vector3, config: WeaponCo
 	end
 
 	for humanoid in damagedHumanoids do
-		humanoid:TakeDamage(config.damage)
+		applyTrackedDamage(player, humanoid, config.damage)
 	end
 	damageWallsInRadius(player, position, radius, config.damage)
 

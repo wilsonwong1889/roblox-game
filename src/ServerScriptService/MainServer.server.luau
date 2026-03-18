@@ -103,6 +103,20 @@ local function applyMovementSpeed(player: Player)
 	end
 end
 
+local function applyCharacterHealth(player: Player)
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 10)
+	if humanoid then
+		local maxHealth = GameConfig.getMaxHealth(player)
+		humanoid.MaxHealth = maxHealth
+		humanoid.Health = maxHealth
+	end
+end
+
 local function getWeek3DoorRuntime(tycoonId: string)
 	local runtime = week3DoorRuntime[tycoonId]
 	if runtime then
@@ -412,12 +426,14 @@ updateLeaderstats = function(player: Player)
 	local cash = getOrCreateLeaderstatsValue(leaderstats, "IntValue", "Cash") :: IntValue
 	local stored = getOrCreateLeaderstatsValue(leaderstats, "IntValue", "Stored") :: IntValue
 	local earned = getOrCreateLeaderstatsValue(leaderstats, "IntValue", "Earned") :: IntValue
+	local kills = getOrCreateLeaderstatsValue(leaderstats, "IntValue", "Kills") :: IntValue
 	local upgrades = getOrCreateLeaderstatsValue(leaderstats, "IntValue", "Upgrades") :: IntValue
 	local eps = getOrCreateLeaderstatsValue(leaderstats, "NumberValue", "EPS") :: NumberValue
 
 	cash.Value = profile.WalletCash
 	stored.Value = profile.CollectorStoredCash
 	earned.Value = profile.TotalEarned
+	kills.Value = PlayerProfile.getKills(player)
 	upgrades.Value = PlayerProfile.getUpgradeCount(player)
 	eps.Value = PlayerProfile.getEarningsPerSecond(player)
 end
@@ -438,6 +454,13 @@ broadcastAllStates = function()
 		end
 	end
 end
+
+WeaponService.KillAwarded.Event:Connect(function(player)
+	updateLeaderstats(player)
+	sendStateUpdate(player)
+	broadcastAllStates()
+	sendUiMessage(player, "Kill Confirmed", string.format("Kills: %d", PlayerProfile.getKills(player)), "success")
+end)
 
 local function syncVerticalButtons(tycoon, purchased: { [string]: boolean })
 	local verticalOrder = {}
@@ -1003,6 +1026,7 @@ end
 
 local function handleCharacterAdded(player: Player)
 	syncPlayerCollisionGroup(player)
+	applyCharacterHealth(player)
 	applyMovementSpeed(player)
 
 	local profile = PlayerProfile.getProfile(player)
@@ -1034,6 +1058,7 @@ local function handleCharacterAdded(player: Player)
 		TycoonService.teleportToSpawn(player, profile.TycoonId)
 	end
 	WeaponService.grantOwnedWeapons(player, profile.PurchasedUpgrades)
+	applyCharacterHealth(player)
 	applyMovementSpeed(player)
 end
 

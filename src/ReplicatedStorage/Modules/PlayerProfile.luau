@@ -18,6 +18,7 @@ export type PlayerData = {
 	VaultCash: number,
 	CollectorStoredCash: number,
 	TotalEarned: number,
+	Kills: number,
 	PurchasedUpgrades: { [string]: boolean },
 	RedeemedCodes: { [string]: boolean },
 	VipStarterPackOwned: boolean,
@@ -70,6 +71,7 @@ function PlayerProfile.createProfile(player: Player): PlayerData
 		VaultCash = GameConfig.STARTING_VAULT_CASH,
 		CollectorStoredCash = 0,
 		TotalEarned = 0,
+		Kills = 0,
 		PurchasedUpgrades = {},
 		RedeemedCodes = {},
 		VipStarterPackOwned = false,
@@ -189,6 +191,22 @@ function PlayerProfile.markUpgradePurchased(player: Player, upgradeId: string)
 	if profile then
 		profile.PurchasedUpgrades[upgradeId] = true
 	end
+end
+
+function PlayerProfile.addKill(player: Player, count: number?): number
+	local profile = playerProfiles[player]
+	if not profile then
+		return 0
+	end
+
+	local increment = math.max(1, math.floor((count or 1) + 0.5))
+	profile.Kills += increment
+	return profile.Kills
+end
+
+function PlayerProfile.getKills(player: Player): number
+	local profile = playerProfiles[player]
+	return if profile then profile.Kills else 0
 end
 
 function PlayerProfile.hasRedeemedCode(player: Player, code: string): boolean
@@ -430,6 +448,7 @@ function PlayerProfile.getStatePayload(player: Player)
 		collectorStoredCash = profile.CollectorStoredCash,
 		tycoonId = profile.TycoonId,
 		totalEarned = profile.TotalEarned,
+		kills = profile.Kills,
 		earningsPerSecond = earningsPerSecond,
 		earningsPerSecondText = string.format("$%.1f/sec", earningsPerSecond),
 		dropperCount = PlayerProfile.getPurchasedDropperCount(player),

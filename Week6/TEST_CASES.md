@@ -131,6 +131,16 @@ Expected output:
 9. Enter an invalid code.
 10. Confirm the UI shows the code is invalid and no cash is awarded.
 
+## Combat Health And Kill Tests
+
+1. Join as a normal player and confirm your humanoid max health is `100`.
+2. Join as `iiTheDarkMagic` and confirm max health is `1000`.
+3. Damage another player or an NPC with purchased weapons.
+4. Confirm weapon hits reduce health using `1 damage = 1 health`.
+5. Confirm no weapon exceeds `60` damage in a single hit.
+6. Kill an NPC or player with a weapon.
+7. Confirm your `Kills` value increases in the leaderboard and HUD.
+
 ## Second-Floor Tests
 
 1. Use `Developer Full Build` or buy through the chain.

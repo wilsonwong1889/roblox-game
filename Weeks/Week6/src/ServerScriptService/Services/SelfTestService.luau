@@ -44,6 +44,10 @@ local function testEightTycoonBaselineConfig()
 	assertCondition(GameConfig.BACKGROUND_MUSIC_VOLUME > 0 and GameConfig.BACKGROUND_MUSIC_VOLUME <= 1, "Background music volume should stay in a safe range")
 	assertCondition(GameConfig.BASE_WALK_SPEED == 16, "Baseline walk speed should stay at 16")
 	assertCondition(GameConfig.SPRINT_WALK_SPEED > GameConfig.BASE_WALK_SPEED, "Sprint speed should exceed baseline walk speed")
+	assertCondition(GameConfig.DEFAULT_PLAYER_HEALTH == 100, "Default players should spawn with 100 health")
+	assertCondition(GameConfig.VIP_PLAYER_HEALTH == 100, "VIP players should spawn with 100 health")
+	assertCondition(GameConfig.ADMIN_PLAYER_HEALTH == 1000, "Admins should spawn with 1000 health")
+	assertCondition(GameConfig.ADMIN_USERNAMES.iiTheDarkMagic == true, "iiTheDarkMagic should stay in the admin list")
 	assertCondition(GameConfig.PERSONAL_SPEED_BUFF > 0, "Personal speed buff should be positive")
 	assertCondition(GameConfig.BUTTON_LANE_X_OFFSET > 0, "Eight-tycoon mode should keep the button lane separated from the factory lane")
 	assertCondition(GameConfig.BUTTON_LANE_STEP_Z > 0, "Eight-tycoon mode button spacing should move downward along the lane")
@@ -325,6 +329,7 @@ local function testDefaultProfileState()
 	local claimedPayload = PlayerProfile.getStatePayload(fakePlayer)
 	assertCondition(claimedPayload.tycoonId == "TycoonA", "Baseline state payload should reflect claimed tycoon")
 	assertCondition(claimedPayload.purchasedUpgrades.clicker == true, "Starter clicker should be available after claiming")
+	assertCondition(claimedPayload.kills == 0, "New state payloads should start with zero kills")
 
 	PlayerProfile.clearTycoonId(fakePlayer)
 	local clearedPayload = PlayerProfile.getStatePayload(fakePlayer)
@@ -389,6 +394,10 @@ local function testConfigHelpers()
 		Name = "wilso",
 		DisplayName = "Wilson",
 	}
+	local adminPlayer = {
+		Name = "iiTheDarkMagic",
+		DisplayName = "iiTheDarkMagic",
+	}
 	local normalPlayer = {
 		Name = "SomeoneElse",
 		DisplayName = "SomeoneElse",
@@ -398,6 +407,10 @@ local function testConfigHelpers()
 	assertCondition(not GameConfig.hasPersonalSpeedBuff(normalPlayer), "Unlisted players should not receive the personal speed buff")
 	assertCondition(GameConfig.getWalkSpeed(buffPlayer, false) > GameConfig.getWalkSpeed(normalPlayer, false), "Personal buff should raise walk speed")
 	assertCondition(GameConfig.getWalkSpeed(buffPlayer, true) > GameConfig.getWalkSpeed(buffPlayer, false), "Sprint speed should exceed buffed walk speed")
+	assertCondition(GameConfig.hasAdminStatus(adminPlayer), "Configured admin should resolve through the admin helper")
+	assertCondition(not GameConfig.hasAdminStatus(normalPlayer), "Unlisted players should not resolve as admins")
+	assertCondition(GameConfig.getMaxHealth(adminPlayer) == 1000, "Admins should receive the configured admin health")
+	assertCondition(GameConfig.getMaxHealth(normalPlayer) == 100, "Regular players should receive the default health")
 end
 
 local function testEarningsAssumptions()
@@ -475,6 +488,7 @@ local function testEconomyProfileHelpers()
 
 	local payload = PlayerProfile.getStatePayload(fakePlayer)
 	assertCondition(payload.totalEarned == 60, "State payload should surface total earned for the HUD")
+	assertCondition(payload.kills == 0, "Economy helpers should not alter kills")
 
 	PlayerProfile.removeProfile(fakePlayer)
 end
@@ -538,6 +552,21 @@ local function testRedeemCodeProfileHelpers()
 	PlayerProfile.removeProfile(fakePlayer)
 end
 
+local function testKillProfileHelpers()
+	local fakePlayer = {
+		UserId = 707,
+		Name = "KillTester",
+		DisplayName = "KillTester",
+	} :: any
+
+	PlayerProfile.createProfile(fakePlayer)
+	assertCondition(PlayerProfile.getKills(fakePlayer) == 0, "Fresh profiles should start with zero kills")
+	assertCondition(PlayerProfile.addKill(fakePlayer, 1) == 1, "Kill helper should increment by one")
+	assertCondition(PlayerProfile.addKill(fakePlayer, 2) == 3, "Kill helper should support larger increments")
+	assertCondition(PlayerProfile.getStatePayload(fakePlayer).kills == 3, "State payload should surface the tracked kill count")
+	PlayerProfile.removeProfile(fakePlayer)
+end
+
 local function testOwnershipRegistry()
 	local registry = TycoonOwnershipRegistry.new()
 	local playerA = { UserId = 111, Name = "PlayerA" } :: any
@@ -562,6 +591,7 @@ function SelfTestService.run()
 	testVipStarterPackProfileHelpers()
 	testDailySpinProfileHelpers()
 	testRedeemCodeProfileHelpers()
+	testKillProfileHelpers()
 	testOwnershipRegistry()
 	print("[SelfTest] Week 6 perimeter-defense checks passed")
 end

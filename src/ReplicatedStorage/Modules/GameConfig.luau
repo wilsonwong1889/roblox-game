@@ -66,6 +66,15 @@ GameConfig.BACKGROUND_MUSIC_SOUND_ID = "rbxassetid://1841461968"
 GameConfig.BACKGROUND_MUSIC_VOLUME = 0.2
 GameConfig.BASE_WALK_SPEED = 16
 GameConfig.SPRINT_WALK_SPEED = 24
+GameConfig.DEFAULT_PLAYER_HEALTH = 100
+GameConfig.VIP_PLAYER_HEALTH = 100
+GameConfig.ADMIN_PLAYER_HEALTH = 1000
+GameConfig.ADMIN_USERNAMES = {
+	iiTheDarkMagic = true,
+}
+GameConfig.ADMIN_DISPLAY_NAMES = {}
+GameConfig.VIP_USERNAMES = {}
+GameConfig.VIP_DISPLAY_NAMES = {}
 GameConfig.PERSONAL_SPEED_BUFF = 6
 GameConfig.SPEED_BUFF_USERNAMES = {
 	wilso = true,
@@ -842,6 +851,36 @@ function GameConfig.getWalkSpeed(player, sprinting: boolean?): number
 	end
 
 	return speed
+end
+
+function GameConfig.hasAdminStatus(player): boolean
+	if not player then
+		return false
+	end
+
+	return GameConfig.ADMIN_USERNAMES[player.Name] == true
+		or GameConfig.ADMIN_DISPLAY_NAMES[player.DisplayName] == true
+end
+
+function GameConfig.hasVipStatus(player): boolean
+	if not player then
+		return false
+	end
+
+	return GameConfig.VIP_USERNAMES[player.Name] == true
+		or GameConfig.VIP_DISPLAY_NAMES[player.DisplayName] == true
+end
+
+function GameConfig.getMaxHealth(player): number
+	if GameConfig.hasAdminStatus(player) then
+		return GameConfig.ADMIN_PLAYER_HEALTH
+	end
+
+	if GameConfig.hasVipStatus(player) then
+		return GameConfig.VIP_PLAYER_HEALTH
+	end
+
+	return GameConfig.DEFAULT_PLAYER_HEALTH
 end
 
 function GameConfig.getDailySpinSlots(): { [number]: { id: string, name: string, amount: number, chancePercent: number, color: Color3 } }

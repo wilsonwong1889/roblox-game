@@ -20,6 +20,7 @@ Week 6 expands the game into an 8-tycoon ring layout.
 - roaming NPC soldier patrols outside the tycoon walls
 - start-menu daily spin with weighted cash rewards
 - bottom-right code redeem panel for bonus cash
+- kill tracking and role-based player health
 
 ## Validation Focus
 
@@ -33,3 +34,4 @@ Week 6 expands the game into an 8-tycoon ring layout.
 - NPC soldier spawning and roaming around the perimeter
 - daily spin GUI and weighted reward payout
 - code redemption flow and wallet rewards
+- player health and kill-counter behavior

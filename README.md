@@ -20,6 +20,7 @@ Week 6 Ring Layout Expansion
 - wall health, wall destruction, and paid wall rebuilding
 - start-menu daily spin with weighted cash rewards
 - bottom-right code redeem panel with bonus cash codes
+- role-based player health and visible kill tracking
 - earnings-per-second validation in the HUD and payloads
 - live owners/open-plots summary for larger server reads
 - smoke tests and self-tests
