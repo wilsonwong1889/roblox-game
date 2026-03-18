@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Modules.GameConfig)
+local TycoonService = require(script.Parent.TycoonService)
 
 local WeaponService = {}
 
@@ -157,6 +158,42 @@ local function dealDamageToHumanoids(humanoids: { Humanoid }, damage: number)
 	end
 end
 
+local function damageWallPart(part: BasePart?, damage: number)
+	if not part or damage <= 0 then
+		return
+	end
+
+	TycoonService.damageWallPart(part, damage)
+end
+
+local function damageWallsInBox(player: Player, center: CFrame, size: Vector3, damage: number)
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+
+	local damagedParts: { [BasePart]: boolean } = {}
+	for _, part in Workspace:GetPartBoundsInBox(center, size, params) do
+		if not damagedParts[part] then
+			damageWallPart(part, damage)
+			damagedParts[part] = true
+		end
+	end
+end
+
+local function damageWallsInRadius(player: Player, position: Vector3, radius: number, damage: number)
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { player.Character }
+
+	local damagedParts: { [BasePart]: boolean } = {}
+	for _, part in Workspace:GetPartBoundsInRadius(position, radius, params) do
+		if not damagedParts[part] then
+			damageWallPart(part, damage)
+			damagedParts[part] = true
+		end
+	end
+end
+
 local function spawnTracer(origin: Vector3, target: Vector3, color: Color3)
 	local distance = (target - origin).Magnitude
 	if distance <= 0.05 then
@@ -187,6 +224,7 @@ local function playKnife(player: Player, config: WeaponConfig)
 	local swingCenter = root.CFrame * CFrame.new(0, 0, -(config.range * 0.6))
 	local hitHumanoids = gatherHumanoidsInBox(player, swingCenter, Vector3.new(6, 6, config.range))
 	dealDamageToHumanoids(hitHumanoids, config.damage)
+	damageWallsInBox(player, swingCenter, Vector3.new(6, 6, config.range), config.damage)
 
 	local slash = Instance.new("Part")
 	slash.Name = "KnifeSlash"
@@ -223,6 +261,7 @@ local function playMoneyBlaster(player: Player, config: WeaponConfig)
 		if hitHumanoid and hitHumanoid.Health > 0 then
 			hitHumanoid:TakeDamage(config.damage)
 		end
+		damageWallPart(result.Instance, config.damage)
 	end
 end
 
@@ -244,6 +283,7 @@ local function explodeRocket(player: Player, position: Vector3, config: WeaponCo
 	for humanoid in damagedHumanoids do
 		humanoid:TakeDamage(config.damage)
 	end
+	damageWallsInRadius(player, position, radius, config.damage)
 
 	local blast = Instance.new("Part")
 	blast.Name = "RpgBlast"

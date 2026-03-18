@@ -20,7 +20,7 @@ Open the place in Studio and start Play Solo.
 
 Expected output:
 
-- `[SelfTest] Week 6 ring-layout checks passed`
+- `[SelfTest] Week 6 perimeter-defense checks passed`
 
 ## Map Layout Tests
 
@@ -83,8 +83,29 @@ Expected output:
 1. Buy `Wall Set 1`.
 2. Confirm wall segments connect cleanly.
 3. Buy `High Walls`.
-4. Confirm higher wall segments replace or extend the lower perimeter.
+4. Confirm higher wall segments sit directly on top of the first wall shell.
 5. Confirm the door frame visually joins the front wall cleanly.
+
+## Wall Health Tests
+
+1. Buy `Wall Set 1`.
+2. Buy `Armory Bay` and then a weapon, or use a second player with a purchased weapon.
+3. Hit a wall segment with the knife, blaster, or RPG.
+4. Confirm the repair console health total drops.
+5. Confirm the repair prompt changes to `Rebuild $X`.
+6. Keep damaging a wall until it disappears.
+7. Confirm that destroyed wall segment no longer blocks movement.
+8. Use the repair console as the owner.
+9. Confirm wallet cash decreases by exactly the missing wall health.
+10. Confirm the wall segment rebuilds and blocks movement again.
+
+## NPC Patrol Tests
+
+1. Join the map and walk around the outside perimeter.
+2. Confirm 8 soldier NPCs spawn on pads outside the tycoon walls.
+3. Confirm they roam between perimeter patrol points.
+4. Confirm the patrols stay outside the tycoon walls instead of entering the bases.
+5. Confirm soldiers still exist after multiple players claim tycoons.
 
 ## Second-Floor Tests
 

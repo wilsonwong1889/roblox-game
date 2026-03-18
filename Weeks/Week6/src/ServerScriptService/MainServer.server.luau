@@ -485,6 +485,7 @@ local function resetTycoonState(tycoonId: string)
 	end
 
 	dropperLoops[tycoonId] = nil
+	TycoonService.resetWallHealth(tycoonId)
 	TycoonService.applyVisualState(tycoonId, {}, 0)
 	TycoonService.updateButtons(tycoonId, {})
 	syncVerticalButtons(tycoon, {})
@@ -787,6 +788,33 @@ local function connectTycoonEvents()
 			end
 		end)
 
+		tycoon.RepairPrompt.Triggered:Connect(function(player)
+			local profile = PlayerProfile.getProfile(player)
+			if not profile or profile.TycoonId ~= tycoonId then
+				sendUiMessage(player, "Access Denied", "Only the owner can rebuild these walls.", "warning")
+				return
+			end
+
+			local repairCost = TycoonService.getWallRepairCost(tycoonId)
+			if repairCost <= 0 then
+				sendUiMessage(player, "Walls Full", "Your walls are already fully rebuilt.", "info")
+				return
+			end
+
+			if not PlayerProfile.trySpendCash(player, repairCost) then
+				sendUiMessage(player, "Not Enough Cash", string.format("You need $%d to rebuild the walls.", repairCost), "warning")
+				return
+			end
+
+			local repaired = TycoonService.repairWalls(tycoonId, repairCost)
+			refreshTycoonForPlayer(player)
+			if repaired > 0 then
+				sendUiMessage(player, "Walls Rebuilt", string.format("Spent $%d to restore wall health.", repaired), "success")
+			else
+				sendUiMessage(player, "Walls Full", "Your walls are already fully rebuilt.", "info")
+			end
+		end)
+
 		for upgradeId, buttonState in tycoon.ButtonStates do
 			buttonState.prompt.Triggered:Connect(function(player)
 				local profile = PlayerProfile.getProfile(player)
@@ -966,8 +994,8 @@ if RunService:IsStudio() then
 		SelfTestService.run()
 	end)
 	if not ok then
-		warn("[SelfTest] Week 6 ring-layout self-test failed: " .. tostring(err))
+		warn("[SelfTest] Week 6 perimeter-defense self-test failed: " .. tostring(err))
 	end
 end
 
-print("Week 6 ring-layout tycoon server logic bootstrapped")
+print("Week 6 perimeter-defense tycoon server logic bootstrapped")

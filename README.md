@@ -16,6 +16,8 @@ Week 6 Ring Layout Expansion
 - 8 claimable tycoons in a ring layout: 2 left, 2 right, 2 front, 2 back
 - tycoon entrances face inward toward the center
 - expanded shared map with center spawn, center decorations, and corner decorations
+- perimeter NPC soldier patrols outside the tycoon walls
+- wall health, wall destruction, and paid wall rebuilding
 - earnings-per-second validation in the HUD and payloads
 - live owners/open-plots summary for larger server reads
 - smoke tests and self-tests

@@ -124,6 +124,9 @@ export type TycoonObject = {
 	CollectorLabel: TextLabel,
 	CollectorPoint: BasePart,
 	CollectorTrigger: BasePart,
+	RepairConsole: BasePart,
+	RepairPrompt: ProximityPrompt,
+	RepairLabel: TextLabel,
 	StarterDropperModel: Model,
 	StarterClicker: BasePart,
 	StarterClickerOutput: BasePart,
@@ -141,6 +144,7 @@ export type TycoonObject = {
 	DropperRoots: { [string]: Vector3 },
 	LowWallParts: { BasePart },
 	HighWallParts: { BasePart },
+	WallHealthStates: { [string]: { current: number, max: number, part: BasePart? } },
 	WallSetFolder: Folder,
 	DoorFrame: BasePart?,
 	DoorPanel: BasePart?,
@@ -157,6 +161,11 @@ export type TycoonObject = {
 	setOwner: (self: TycoonObject, player: Player?) -> (),
 	isOwnedBy: (self: TycoonObject, player: Player) -> boolean,
 	updateCollectorDisplay: (self: TycoonObject, amount: number) -> (),
+	updateWallRepairDisplay: (self: TycoonObject) -> (),
+	resetWallHealth: (self: TycoonObject) -> (),
+	damageWallPart: (self: TycoonObject, wallPart: BasePart, amount: number) -> boolean,
+	repairWalls: (self: TycoonObject, repairAmount: number?) -> number,
+	getWallRepairCost: (self: TycoonObject) -> number,
 	applyVisualState: (self: TycoonObject, purchased: { [string]: boolean }, collectorStored: number) -> (),
 	updateButtons: (self: TycoonObject, purchased: { [string]: boolean }) -> (),
 	teleportToSpawn: (self: TycoonObject, player: Player) -> (),
@@ -539,6 +548,67 @@ local function createWallSet(parent: Instance, source, prefix: string, yOffset: 
 	}
 end
 
+local function refreshWallPartState(wallState, part: BasePart?)
+	local targetPart = part or wallState.part
+	if not targetPart then
+		return
+	end
+
+	local ratio = if wallState.max > 0 then math.clamp(wallState.current / wallState.max, 0, 1) else 0
+	targetPart:SetAttribute("WallSegmentId", targetPart.Name)
+	targetPart:SetAttribute("WallHealth", wallState.current)
+	targetPart:SetAttribute("WallMaxHealth", wallState.max)
+
+	if ratio <= 0 then
+		targetPart.Transparency = 1
+		targetPart.CanCollide = false
+		targetPart.CanTouch = false
+		targetPart.CanQuery = false
+		return
+	end
+
+	local baseColor = targetPart:GetAttribute("WallBaseColor")
+	local healthyColor = if typeof(baseColor) == "Color3" then baseColor else targetPart.Color
+	targetPart.Color = healthyColor:Lerp(Color3.fromRGB(190, 74, 74), 1 - ratio)
+	targetPart.Transparency = 0.04 + ((1 - ratio) * 0.32)
+	targetPart.CanCollide = true
+	targetPart.CanTouch = true
+	targetPart.CanQuery = true
+end
+
+local function registerWallParts(selfTable, parts: { BasePart })
+	for _, part in parts do
+		local wallId = part.Name
+		local existingState = selfTable.WallHealthStates[wallId]
+		if not existingState then
+			existingState = {
+				current = GameConfig.TYCOON_WALL_MAX_HEALTH,
+				max = GameConfig.TYCOON_WALL_MAX_HEALTH,
+				part = part,
+			}
+			selfTable.WallHealthStates[wallId] = existingState
+		else
+			existingState.max = GameConfig.TYCOON_WALL_MAX_HEALTH
+			existingState.current = math.clamp(existingState.current, 0, existingState.max)
+			existingState.part = part
+		end
+
+		part:SetAttribute("WallTycoonId", selfTable.Id)
+		part:SetAttribute("WallBaseColor", part.Color)
+		refreshWallPartState(existingState, part)
+	end
+end
+
+local function clearRegisteredWallParts(parts: { BasePart }, wallStates)
+	for _, part in parts do
+		local wallId = part.Name
+		local wallState = wallStates[wallId]
+		if wallState then
+			wallState.part = nil
+		end
+	end
+end
+
 local function createDeckTrim(parent: Instance, source, prefix: string, centerOffset: Vector3, deckSize: Vector3, accent: Color3, baseColor: Color3)
 	local halfX = deckSize.X / 2
 	local halfZ = deckSize.Z / 2
@@ -761,6 +831,12 @@ local function ensureWeek3Scaffolding(model: Model, definition: Definition)
 		CanTouch = true,
 		CanQuery = false,
 	})
+	local repairConsole = ensurePart(economyFolder, "RepairConsole", Vector3.new(12, 6, 8), getWorldCFrame(source, GameConfig.TYCOON_WALL_REPAIR_CONSOLE_OFFSET), {
+		Color = Color3.fromRGB(46, 56, 68),
+		Material = Enum.Material.Metal,
+	})
+	local repairLabel = ensureSurfaceLabel(repairConsole, "Walls\n5000/5000", Enum.NormalId.Front, Color3.fromRGB(255, 230, 196))
+	local repairPrompt = ensurePrompt(repairConsole, "Rebuild Walls", "Wall Repair Console", GameConfig.TYCOON_WALL_REPAIR_PROMPT_RANGE)
 	local starterDropperModel, starterClicker, starterClickerOutput, starterClickerLabel = createStarterDropperMachine(economyFolder, source)
 	local starterClickerPrompt = ensurePrompt(starterClicker, "Drop Cash", "Starter Dropper", GameConfig.BUTTON_PROMPT_RANGE)
 	local runtimeFolder = ensureFolder(model, "Runtime")
@@ -877,6 +953,9 @@ local function ensureWeek3Scaffolding(model: Model, definition: Definition)
 		CollectorLabel = collectorLabel,
 		CollectorPoint = collectorPoint,
 		CollectorTrigger = collectorTrigger,
+		RepairConsole = repairConsole,
+		RepairPrompt = repairPrompt,
+		RepairLabel = repairLabel,
 		StarterDropperModel = starterDropperModel,
 		StarterClicker = starterClicker,
 		StarterClickerOutput = starterClickerOutput,
@@ -894,6 +973,7 @@ local function ensureWeek3Scaffolding(model: Model, definition: Definition)
 		DropperRoots = {},
 		LowWallParts = {},
 		HighWallParts = {},
+		WallHealthStates = {},
 		WallSetFolder = wallSetFolder,
 		DoorFrame = nil,
 		DoorPanel = nil,
@@ -1858,9 +1938,11 @@ local function ensureLowWalls(selfTable)
 		GameConfig.TYCOON_LOW_WALL_HEIGHT,
 		selfTable.Accent
 	)
+	registerWallParts(selfTable, selfTable.LowWallParts)
 end
 
 local function clearLowWalls(selfTable)
+	clearRegisteredWallParts(selfTable.LowWallParts, selfTable.WallHealthStates)
 	clearBasePartList(selfTable.LowWallParts)
 	clearFolder(selfTable.WallSetFolder)
 end
@@ -1884,9 +1966,11 @@ local function ensureHighWalls(selfTable)
 		GameConfig.TYCOON_HIGH_WALL_HEIGHT,
 		Color3.fromRGB(49, 61, 104)
 	)
+	registerWallParts(selfTable, selfTable.HighWallParts)
 end
 
 local function clearHighWalls(selfTable)
+	clearRegisteredWallParts(selfTable.HighWallParts, selfTable.WallHealthStates)
 	clearBasePartList(selfTable.HighWallParts)
 	local folder = selfTable.StructuresFolder:FindFirstChild("HighWalls")
 	if folder and folder:IsA("Folder") then
@@ -1978,6 +2062,9 @@ function Tycoon.new(definition: Definition, parent: Instance): TycoonObject
 		CollectorLabel = refs.CollectorLabel,
 		CollectorPoint = refs.CollectorPoint,
 		CollectorTrigger = refs.CollectorTrigger,
+		RepairConsole = refs.RepairConsole,
+		RepairPrompt = refs.RepairPrompt,
+		RepairLabel = refs.RepairLabel,
 		StarterDropperModel = refs.StarterDropperModel,
 		StarterClicker = refs.StarterClicker,
 		StarterClickerOutput = refs.StarterClickerOutput,
@@ -1995,6 +2082,7 @@ function Tycoon.new(definition: Definition, parent: Instance): TycoonObject
 		DropperRoots = refs.DropperRoots,
 		LowWallParts = refs.LowWallParts,
 		HighWallParts = refs.HighWallParts,
+		WallHealthStates = refs.WallHealthStates,
 		WallSetFolder = refs.WallSetFolder,
 		DoorFrame = refs.DoorFrame,
 		DoorPanel = refs.DoorPanel,
@@ -2044,6 +2132,9 @@ function Tycoon.bind(model: Model, definition: Definition): TycoonObject
 		CollectorLabel = refs.CollectorLabel,
 		CollectorPoint = refs.CollectorPoint,
 		CollectorTrigger = refs.CollectorTrigger,
+		RepairConsole = refs.RepairConsole,
+		RepairPrompt = refs.RepairPrompt,
+		RepairLabel = refs.RepairLabel,
 		StarterDropperModel = refs.StarterDropperModel,
 		StarterClicker = refs.StarterClicker,
 		StarterClickerOutput = refs.StarterClickerOutput,
@@ -2061,6 +2152,7 @@ function Tycoon.bind(model: Model, definition: Definition): TycoonObject
 		DropperRoots = refs.DropperRoots,
 		LowWallParts = refs.LowWallParts,
 		HighWallParts = refs.HighWallParts,
+		WallHealthStates = refs.WallHealthStates,
 		WallSetFolder = refs.WallSetFolder,
 		DoorFrame = refs.DoorFrame,
 		DoorPanel = refs.DoorPanel,
@@ -2116,6 +2208,7 @@ function Tycoon:setOwner(player: Player?)
 	end
 
 	self.TycoonIdValue.Value = self.Id
+	self:updateWallRepairDisplay()
 end
 
 function Tycoon:isOwnedBy(player: Player): boolean
@@ -2130,6 +2223,115 @@ function Tycoon:updateCollectorDisplay(amount: number, autoCollectorActive: bool
 		self.CollectorLabel.Text = string.format("Stored\n$%d", amount)
 		self.CollectorPrompt.ActionText = if amount > 0 then string.format("Collect $%d", amount) else "Collect $0"
 	end
+end
+
+function Tycoon:getWallRepairCost(): number
+	local totalMissing = 0
+	for _, wallState in self.WallHealthStates do
+		if wallState.part then
+			totalMissing += math.max(0, wallState.max - wallState.current)
+		end
+	end
+	return totalMissing
+end
+
+function Tycoon:updateWallRepairDisplay()
+	local totalCurrent = 0
+	local totalMax = 0
+	for _, wallState in self.WallHealthStates do
+		if wallState.part then
+			totalCurrent += wallState.current
+			totalMax += wallState.max
+			refreshWallPartState(wallState)
+		end
+	end
+
+	local missing = math.max(0, totalMax - totalCurrent)
+	if totalMax <= 0 then
+		self.RepairLabel.Text = "Walls\nLocked"
+		self.RepairPrompt.ActionText = "Walls Locked"
+		self.RepairPrompt.Enabled = false
+		return
+	end
+
+	self.RepairLabel.Text = string.format("Walls\n%d/%d", totalCurrent, totalMax)
+	self.RepairPrompt.ActionText = if missing > 0 then string.format("Rebuild $%d", missing) else "Walls Full"
+	self.RepairPrompt.Enabled = self.Owner ~= nil and missing > 0
+end
+
+function Tycoon:resetWallHealth()
+	for wallId, wallState in self.WallHealthStates do
+		wallState.current = wallState.max
+		if wallState.part == nil then
+			self.WallHealthStates[wallId] = {
+				current = wallState.max,
+				max = wallState.max,
+				part = nil,
+			}
+		end
+	end
+	self:updateWallRepairDisplay()
+end
+
+function Tycoon:damageWallPart(wallPart: BasePart, amount: number): boolean
+	if amount <= 0 then
+		return false
+	end
+
+	local wallId = wallPart:GetAttribute("WallSegmentId")
+	if type(wallId) ~= "string" then
+		return false
+	end
+
+	local wallState = self.WallHealthStates[wallId]
+	if not wallState then
+		return false
+	end
+
+	local previous = wallState.current
+	wallState.current = math.max(0, wallState.current - math.floor(amount + 0.5))
+	wallState.part = wallPart
+	refreshWallPartState(wallState)
+	self:updateWallRepairDisplay()
+	return wallState.current < previous
+end
+
+function Tycoon:repairWalls(repairAmount: number?): number
+	local remaining = math.max(0, math.floor((repairAmount or self:getWallRepairCost()) + 0.5))
+	local spent = 0
+	if remaining <= 0 then
+		self:updateWallRepairDisplay()
+		return 0
+	end
+
+	local orderedWallIds = {}
+	for wallId, wallState in self.WallHealthStates do
+		if wallState.part then
+			table.insert(orderedWallIds, wallId)
+		end
+	end
+	table.sort(orderedWallIds)
+
+	for _, wallId in orderedWallIds do
+		if remaining <= 0 then
+			break
+		end
+
+		local wallState = self.WallHealthStates[wallId]
+		local missing = math.max(0, wallState.max - wallState.current)
+		if missing > 0 then
+			local applied = math.min(remaining, missing)
+			wallState.current += applied
+			remaining -= applied
+			spent += applied
+			if wallState.part then
+				refreshWallPartState(wallState)
+			end
+		end
+	end
+
+	self:updateWallRepairDisplay()
+	return spent
 end
 
 function Tycoon:applyVisualState(purchased: { [string]: boolean }, collectorStored: number)
@@ -2195,6 +2397,11 @@ function Tycoon:applyVisualState(purchased: { [string]: boolean }, collectorStor
 	else
 		clearHighWalls(self)
 	end
+
+	setPartVisible(self.RepairConsole, showWallSet, 0)
+	self.RepairConsole.CanCollide = false
+	self.RepairConsole.CanTouch = false
+	self.RepairConsole.CanQuery = false
 
 	local hasDoorUpgrade = purchased.front_door == true or purchased.reinforced_door == true
 	if hasDoorUpgrade then
@@ -2371,6 +2578,7 @@ function Tycoon:applyVisualState(purchased: { [string]: boolean }, collectorStor
 	self.EarningsLabel.Text = string.format("Earnings\n$%.1f/sec", computeEarningsPerSecond(purchased))
 	self:updateCollectorDisplay(collectorStored, purchased.auto_collector == true)
 	self.CollectorPrompt.Enabled = self.Owner ~= nil and purchased.auto_collector ~= true
+	self:updateWallRepairDisplay()
 end
 
 function Tycoon:updateButtons(purchased: { [string]: boolean })

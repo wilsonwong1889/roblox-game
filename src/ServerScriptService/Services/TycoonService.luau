@@ -11,6 +11,7 @@ export type TycoonRecord = Tycoon.TycoonObject
 
 local tycoonsById: { [string]: TycoonRecord } = {}
 local ownershipRegistry = TycoonOwnershipRegistry.new()
+local npcGeneration = 0
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
@@ -348,6 +349,139 @@ local function buildMountainCluster(parent: Instance, name: string, center: Vect
 	})
 end
 
+local function createNpcSoldier(parent: Instance, name: string, spawnPosition: Vector3): Model
+	local model = Instance.new("Model")
+	model.Name = name
+	model.Parent = parent
+	model:SetAttribute("NpcRole", "Soldier")
+	model:SetAttribute("NpcState", "Roaming")
+
+	local function makeBodyPart(partName: string, size: Vector3, offset: Vector3, color: Color3, material: Enum.Material, transparency: number?, canCollide: boolean?): BasePart
+		local part = createPart(model, partName, size, CFrame.new(spawnPosition + offset), {
+			Color = color,
+			Material = material,
+			Transparency = transparency or 0,
+			CanCollide = if canCollide == nil then true else canCollide,
+		})
+		part.Anchored = false
+		part.Massless = partName ~= "HumanoidRootPart"
+		return part
+	end
+
+	local root = makeBodyPart("HumanoidRootPart", Vector3.new(2, 2, 1), Vector3.new(0, 3, 0), Color3.fromRGB(95, 110, 120), Enum.Material.SmoothPlastic, 1, false)
+	root.CanTouch = false
+	root.CanQuery = false
+	local torso = makeBodyPart("Torso", Vector3.new(2.2, 2.4, 1.4), Vector3.new(0, 3, 0), Color3.fromRGB(77, 95, 82), Enum.Material.Fabric, nil, true)
+	local head = makeBodyPart("Head", Vector3.new(2, 1, 1), Vector3.new(0, 4.7, 0), Color3.fromRGB(226, 198, 172), Enum.Material.SmoothPlastic, nil, false)
+	local leftArm = makeBodyPart("LeftArm", Vector3.new(1, 2.2, 1), Vector3.new(-1.7, 3, 0), Color3.fromRGB(61, 75, 64), Enum.Material.Fabric, nil, false)
+	local rightArm = makeBodyPart("RightArm", Vector3.new(1, 2.2, 1), Vector3.new(1.7, 3, 0), Color3.fromRGB(61, 75, 64), Enum.Material.Fabric, nil, false)
+	local leftLeg = makeBodyPart("LeftLeg", Vector3.new(1, 2.4, 1), Vector3.new(-0.55, 1, 0), Color3.fromRGB(38, 42, 47), Enum.Material.Fabric, nil, true)
+	local rightLeg = makeBodyPart("RightLeg", Vector3.new(1, 2.4, 1), Vector3.new(0.55, 1, 0), Color3.fromRGB(38, 42, 47), Enum.Material.Fabric, nil, true)
+	local vest = makeBodyPart("Vest", Vector3.new(2.5, 1.4, 1.6), Vector3.new(0, 3.2, -0.1), Color3.fromRGB(95, 121, 94), Enum.Material.Metal, nil, false)
+	local helmet = makeBodyPart("Helmet", Vector3.new(2.2, 0.9, 1.8), Vector3.new(0, 5.25, 0), Color3.fromRGB(56, 74, 58), Enum.Material.Metal, nil, false)
+
+	for _, part in { torso, head, leftArm, rightArm, leftLeg, rightLeg, vest, helmet } do
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = part
+		weld.Parent = root
+	end
+
+	local humanoid = Instance.new("Humanoid")
+	humanoid.Name = "Humanoid"
+	humanoid.DisplayName = "Soldier"
+	humanoid.Health = 100
+	humanoid.MaxHealth = 100
+	humanoid.WalkSpeed = GameConfig.MAP_NPC_SPEED
+	humanoid.AutoRotate = true
+	humanoid.Parent = model
+
+	model.PrimaryPart = root
+	task.defer(function()
+		pcall(function()
+			root:SetNetworkOwner(nil)
+		end)
+	end)
+
+	return model
+end
+
+local function runNpcPatrolLoop(generation: number, model: Model, patrolPoints: { BasePart })
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model.PrimaryPart
+	if not humanoid or not root or #patrolPoints == 0 then
+		return
+	end
+
+	local nextPointIndex = math.random(1, #patrolPoints)
+	while npcGeneration == generation and model.Parent and humanoid.Parent and humanoid.Health > 0 do
+		nextPointIndex = ((nextPointIndex + math.random(1, #patrolPoints - 1)) - 1) % #patrolPoints + 1
+		local targetPoint = patrolPoints[nextPointIndex]
+		local targetPosition = targetPoint.Position + Vector3.new(0, 3, 0)
+		local reached = false
+		local connection = humanoid.MoveToFinished:Connect(function()
+			reached = true
+		end)
+		humanoid:MoveTo(targetPosition)
+		local timeoutAt = os.clock() + math.max(3, ((root.Position - targetPosition).Magnitude / math.max(1, GameConfig.MAP_NPC_SPEED)) + 2)
+		while npcGeneration == generation and model.Parent and humanoid.Parent and humanoid.Health > 0 and not reached and os.clock() < timeoutAt do
+			task.wait(0.2)
+		end
+		connection:Disconnect()
+		task.wait(0.35 + (math.random() * 0.9))
+	end
+end
+
+local function buildNpcPatrol(decorationsFolder: Folder, centerX: number, centerZ: number, groundWidth: number, groundDepth: number)
+	npcGeneration += 1
+	local generation = npcGeneration
+	local patrolFolder = ensureFolder(decorationsFolder, "NpcPatrol")
+	clearFolder(patrolFolder)
+
+	local spawnFolder = ensureFolder(patrolFolder, "SpawnPoints")
+	local waypointFolder = ensureFolder(patrolFolder, "Waypoints")
+	local soldierFolder = ensureFolder(patrolFolder, "Soldiers")
+
+	local halfWidth = groundWidth / 2
+	local halfDepth = groundDepth / 2
+	local patrolRadiusX = math.min(halfWidth - 72, math.max(GameConfig.MAP_NPC_PATROL_RADIUS, GameConfig.MAP_RING_SIDE_DISTANCE + 78))
+	local patrolRadiusZ = math.min(halfDepth - 72, math.max(GameConfig.MAP_NPC_PATROL_RADIUS, GameConfig.MAP_RING_SIDE_DISTANCE + 78))
+	local patrolPoints = {}
+
+	for index = 1, GameConfig.MAP_NPC_ROAM_POINT_COUNT do
+		local alpha = ((index - 1) / GameConfig.MAP_NPC_ROAM_POINT_COUNT) * math.pi * 2
+		local pointPosition = Vector3.new(
+			centerX + (math.cos(alpha) * patrolRadiusX),
+			2,
+			centerZ + (math.sin(alpha) * patrolRadiusZ)
+		)
+		local point = createPart(waypointFolder, string.format("PatrolPoint%02d", index), Vector3.new(4, 1, 4), CFrame.new(pointPosition), {
+			Transparency = 1,
+			CanCollide = false,
+			CanTouch = false,
+			CanQuery = false,
+		})
+		point:SetAttribute("NpcPatrolPoint", true)
+		table.insert(patrolPoints, point)
+	end
+
+	for index = 1, GameConfig.MAP_NPC_COUNT do
+		local spawnPointIndex = math.floor(((index - 1) / GameConfig.MAP_NPC_COUNT) * #patrolPoints) + 1
+		local spawnPoint = patrolPoints[spawnPointIndex]
+		local spawnPad = createPart(spawnFolder, string.format("SoldierSpawn%02d", index), Vector3.new(8, 1, 8), CFrame.new(spawnPoint.Position), {
+			Color = Color3.fromRGB(82, 123, 92),
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			CanTouch = false,
+			CanQuery = false,
+			Transparency = 0.15,
+		})
+		ensureSurfaceLabel(spawnPad, "NPC\nSpawn", Enum.NormalId.Top, Color3.fromRGB(240, 255, 235))
+		local soldier = createNpcSoldier(soldierFolder, string.format("Soldier%02d", index), spawnPoint.Position)
+		task.spawn(runNpcPatrolLoop, generation, soldier, patrolPoints)
+	end
+end
+
 local function ensurePinkSky()
 	if not GameConfig.PINK_SKY_ENABLED then
 		return
@@ -638,6 +772,8 @@ local function ensureSharedMap(sharedMapFolder: Folder, centerX: number, centerZ
 	buildMountainCluster(mountainFolder, "SouthFoothill", Vector3.new(centerX, 0, centerZ + halfDepth - 78), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), 0)
 	buildMountainCluster(mountainFolder, "WestFoothill", Vector3.new(centerX - halfWidth + 78, 0, centerZ), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), 90)
 	buildMountainCluster(mountainFolder, "EastFoothill", Vector3.new(centerX + halfWidth - 78, 0, centerZ), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), -90)
+
+	buildNpcPatrol(decorationsFolder, centerX, centerZ, groundWidth, groundDepth)
 end
 
 function TycoonService.initialize()
@@ -766,6 +902,45 @@ function TycoonService.updateButtons(tycoonId: string, purchased: { [string]: bo
 	if tycoon then
 		tycoon:updateButtons(purchased)
 	end
+end
+
+function TycoonService.getWallRepairCost(tycoonId: string): number
+	local tycoon = tycoonsById[tycoonId]
+	if not tycoon then
+		return 0
+	end
+
+	return tycoon:getWallRepairCost()
+end
+
+function TycoonService.repairWalls(tycoonId: string, repairAmount: number?): number
+	local tycoon = tycoonsById[tycoonId]
+	if not tycoon then
+		return 0
+	end
+
+	return tycoon:repairWalls(repairAmount)
+end
+
+function TycoonService.resetWallHealth(tycoonId: string)
+	local tycoon = tycoonsById[tycoonId]
+	if tycoon then
+		tycoon:resetWallHealth()
+	end
+end
+
+function TycoonService.damageWallPart(part: BasePart, amount: number): boolean
+	local tycoonId = part and part:GetAttribute("WallTycoonId")
+	if type(tycoonId) ~= "string" then
+		return false
+	end
+
+	local tycoon = tycoonsById[tycoonId]
+	if not tycoon then
+		return false
+	end
+
+	return tycoon:damageWallPart(part, amount)
 end
 
 return TycoonService
