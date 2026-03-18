@@ -303,6 +303,21 @@ local function buildTreeCluster(parent: Instance, name: string, center: Vector3,
 	})
 end
 
+local function buildBoundaryForestPatch(parent: Instance, name: string, center: Vector3, spreadX: number, spreadZ: number, count: number)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = parent
+
+	for index = 1, count do
+		local xAlpha = ((index * 29) % 100) / 100
+		local zAlpha = ((index * 53) % 100) / 100
+		local x = center.X + ((xAlpha - 0.5) * spreadX)
+		local z = center.Z + ((zAlpha - 0.5) * spreadZ)
+		local canopyColor = Color3.fromRGB(86 + (index % 4) * 10, 144 + (index % 3) * 16, 102 + (index % 5) * 8)
+		buildTreeCluster(folder, "PatchTree" .. index, Vector3.new(x, 0, z), canopyColor, if index % 4 == 0 then 1.22 else 0.92)
+	end
+end
+
 local function buildMountainCluster(parent: Instance, name: string, center: Vector3, primary: Color3, accent: Color3, yawDegrees: number)
 	local folder = Instance.new("Folder")
 	folder.Name = name
@@ -525,23 +540,23 @@ local function ensureSharedMap(sharedMapFolder: Folder, centerX: number, centerZ
 	local outerBoundaryFolder = ensureFolder(decorationsFolder, "Boundaries")
 	createPart(outerBoundaryFolder, "NorthBoundary", Vector3.new(groundWidth - 8, boundaryHeight, boundaryThickness), CFrame.new(centerX, boundaryHeight / 2, centerZ - halfDepth + (boundaryThickness / 2)), {
 		Color = boundaryColor,
-		Material = Enum.Material.Neon,
-		Transparency = 0.28,
+		Material = Enum.Material.Slate,
+		Transparency = 0.12,
 	})
 	createPart(outerBoundaryFolder, "SouthBoundary", Vector3.new(groundWidth - 8, boundaryHeight, boundaryThickness), CFrame.new(centerX, boundaryHeight / 2, centerZ + halfDepth - (boundaryThickness / 2)), {
 		Color = boundaryColor,
-		Material = Enum.Material.Neon,
-		Transparency = 0.28,
+		Material = Enum.Material.Slate,
+		Transparency = 0.12,
 	})
 	createPart(outerBoundaryFolder, "WestBoundary", Vector3.new(boundaryThickness, boundaryHeight, groundDepth - 8), CFrame.new(centerX - halfWidth + (boundaryThickness / 2), boundaryHeight / 2, centerZ), {
 		Color = boundaryColor,
-		Material = Enum.Material.Neon,
-		Transparency = 0.28,
+		Material = Enum.Material.Slate,
+		Transparency = 0.12,
 	})
 	createPart(outerBoundaryFolder, "EastBoundary", Vector3.new(boundaryThickness, boundaryHeight, groundDepth - 8), CFrame.new(centerX + halfWidth - (boundaryThickness / 2), boundaryHeight / 2, centerZ), {
 		Color = boundaryColor,
-		Material = Enum.Material.Neon,
-		Transparency = 0.28,
+		Material = Enum.Material.Slate,
+		Transparency = 0.12,
 	})
 	createPart(outerBoundaryFolder, "NorthGlow", Vector3.new(groundWidth - 26, 5, 4), CFrame.new(centerX, 6, centerZ - halfDepth + boundaryInset), {
 		Color = boundaryGlowColor,
@@ -594,6 +609,12 @@ local function ensureSharedMap(sharedMapFolder: Folder, centerX: number, centerZ
 		buildTreeCluster(forestFolder, "TreeCluster" .. treeIndex, position, canopyColor, if treeIndex % 3 == 0 then 1.18 else 1)
 	end
 
+	local boundaryForestFolder = ensureFolder(decorationsFolder, "BoundaryForest")
+	buildBoundaryForestPatch(boundaryForestFolder, "NorthPatch", Vector3.new(centerX, 0, centerZ - halfDepth + 46), groundWidth - 180, 36, 10)
+	buildBoundaryForestPatch(boundaryForestFolder, "SouthPatch", Vector3.new(centerX, 0, centerZ + halfDepth - 46), groundWidth - 180, 36, 10)
+	buildBoundaryForestPatch(boundaryForestFolder, "WestPatch", Vector3.new(centerX - halfWidth + 46, 0, centerZ), 36, groundDepth - 180, 10)
+	buildBoundaryForestPatch(boundaryForestFolder, "EastPatch", Vector3.new(centerX + halfWidth - 46, 0, centerZ), 36, groundDepth - 180, 10)
+
 	local mountainFolder = ensureFolder(decorationsFolder, "MountainRing")
 	local mountainRadius = GameConfig.MAP_MOUNTAIN_RING_RADIUS
 	for mountainIndex = 1, GameConfig.MAP_MOUNTAIN_CLUSTER_COUNT do
@@ -612,6 +633,11 @@ local function ensureSharedMap(sharedMapFolder: Folder, centerX: number, centerZ
 			math.deg(alpha) + 90
 		)
 	end
+
+	buildMountainCluster(mountainFolder, "NorthFoothill", Vector3.new(centerX, 0, centerZ - halfDepth + 78), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), 180)
+	buildMountainCluster(mountainFolder, "SouthFoothill", Vector3.new(centerX, 0, centerZ + halfDepth - 78), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), 0)
+	buildMountainCluster(mountainFolder, "WestFoothill", Vector3.new(centerX - halfWidth + 78, 0, centerZ), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), 90)
+	buildMountainCluster(mountainFolder, "EastFoothill", Vector3.new(centerX + halfWidth - 78, 0, centerZ), Color3.fromRGB(96, 104, 110), Color3.fromRGB(138, 146, 152), -90)
 end
 
 function TycoonService.initialize()
