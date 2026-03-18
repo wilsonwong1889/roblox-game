@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
@@ -47,6 +48,32 @@ local function roundCount(value: number?): number
 	return math.floor((value or 0) + 0.5)
 end
 
+local function makeButton(parent: Instance, name: string, size: UDim2, position: UDim2, text: string, backgroundColor: Color3, textColor: Color3): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = size
+	button.Position = position
+	button.Text = text
+	button.TextSize = 16
+	button.Font = Enum.Font.GothamBold
+	button.TextColor3 = textColor
+	button.BackgroundColor3 = backgroundColor
+	button.AutoButtonColor = false
+	button.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = button
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = backgroundColor:Lerp(Color3.new(1, 1, 1), 0.28)
+	stroke.Thickness = 1
+	stroke.Transparency = 0.15
+	stroke.Parent = button
+
+	return button
+end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Week6HUD"
 screenGui.ResetOnSpawn = false
@@ -89,10 +116,14 @@ topBarStroke.Thickness = 1
 topBarStroke.Transparency = 0.15
 topBarStroke.Parent = topBar
 
+local menuButton = makeButton(topBar, "MenuButton", UDim2.fromOffset(84, 30), UDim2.new(1, -96, 0, 12), "Menu", Color3.fromRGB(48, 61, 86), Color3.fromRGB(255, 255, 255))
+
 local titleLabel = makeLabel(topBar, "TitleLabel", UDim2.new(1, -20, 0, 22), UDim2.fromOffset(12, 4), "Break-In Tycoon", 22, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
 local stageLabel = makeLabel(topBar, "StageLabel", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(12, 28), "Ring Layout Server", 14, Color3.fromRGB(130, 203, 255), Enum.Font.GothamSemibold)
 local serverSummaryLabel = makeLabel(topBar, "ServerSummaryLabel", UDim2.fromOffset(232, 18), UDim2.new(1, -244, 0, 18), "Owners 0/0 | Open plots 0", 13, Color3.fromRGB(191, 199, 214), Enum.Font.GothamSemibold)
 serverSummaryLabel.TextXAlignment = Enum.TextXAlignment.Right
+serverSummaryLabel.Size = UDim2.fromOffset(144, 18)
+serverSummaryLabel.Position = UDim2.new(1, -250, 0, 18)
 
 local statsWrap = Instance.new("Frame")
 statsWrap.Name = "StatsWrap"
@@ -217,6 +248,107 @@ toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 toastLayout.Parent = toastHolder
 
+local startMenuOverlay = Instance.new("Frame")
+startMenuOverlay.Name = "StartMenuOverlay"
+startMenuOverlay.Size = UDim2.fromScale(1, 1)
+startMenuOverlay.BackgroundColor3 = Color3.fromRGB(8, 11, 16)
+startMenuOverlay.BackgroundTransparency = 0.22
+startMenuOverlay.ZIndex = 20
+startMenuOverlay.Parent = screenGui
+
+local startMenuPanel = Instance.new("Frame")
+startMenuPanel.Name = "StartMenuPanel"
+startMenuPanel.Size = UDim2.fromOffset(560, 360)
+startMenuPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+startMenuPanel.Position = UDim2.fromScale(0.5, 0.5)
+startMenuPanel.BackgroundColor3 = Color3.fromRGB(20, 25, 34)
+startMenuPanel.ZIndex = 21
+startMenuPanel.Parent = startMenuOverlay
+
+local startMenuCorner = Instance.new("UICorner")
+startMenuCorner.CornerRadius = UDim.new(0, 20)
+startMenuCorner.Parent = startMenuPanel
+
+local startMenuStroke = Instance.new("UIStroke")
+startMenuStroke.Color = Color3.fromRGB(130, 203, 255)
+startMenuStroke.Thickness = 2
+startMenuStroke.Parent = startMenuPanel
+
+local menuHero = Instance.new("Frame")
+menuHero.Name = "Hero"
+menuHero.Size = UDim2.new(1, -28, 0, 94)
+menuHero.Position = UDim2.fromOffset(14, 14)
+menuHero.BackgroundColor3 = Color3.fromRGB(28, 35, 48)
+menuHero.ZIndex = 21
+menuHero.Parent = startMenuPanel
+
+local menuHeroCorner = Instance.new("UICorner")
+menuHeroCorner.CornerRadius = UDim.new(0, 16)
+menuHeroCorner.Parent = menuHero
+
+local menuHeroGlow = Instance.new("Frame")
+menuHeroGlow.Name = "Glow"
+menuHeroGlow.Size = UDim2.new(1, 0, 0, 12)
+menuHeroGlow.Position = UDim2.fromOffset(0, 82)
+menuHeroGlow.BackgroundColor3 = Color3.fromRGB(142, 210, 190)
+menuHeroGlow.BackgroundTransparency = 0.25
+menuHeroGlow.ZIndex = 21
+menuHeroGlow.Parent = menuHero
+
+local menuTitle = makeLabel(menuHero, "MenuTitle", UDim2.new(1, -24, 0, 34), UDim2.fromOffset(14, 10), "Break-In Tycoon", 28, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
+menuTitle.ZIndex = 22
+local menuSubtitle = makeLabel(menuHero, "MenuSubtitle", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(14, 48), "Build fast, arm your base, and climb three production floors.", 15, Color3.fromRGB(209, 220, 236), Enum.Font.GothamSemibold)
+menuSubtitle.ZIndex = 22
+
+local menuTabs = Instance.new("Frame")
+menuTabs.Name = "Tabs"
+menuTabs.Size = UDim2.new(1, -28, 0, 42)
+menuTabs.Position = UDim2.fromOffset(14, 122)
+menuTabs.BackgroundTransparency = 1
+menuTabs.ZIndex = 21
+menuTabs.Parent = startMenuPanel
+
+local startNowButton = makeButton(menuTabs, "StartNowButton", UDim2.fromOffset(152, 40), UDim2.fromOffset(0, 0), "Start Now", Color3.fromRGB(98, 245, 182), Color3.fromRGB(19, 36, 30))
+startNowButton.ZIndex = 22
+local infoButton = makeButton(menuTabs, "InfoButton", UDim2.fromOffset(152, 40), UDim2.fromOffset(168, 0), "Information", Color3.fromRGB(56, 69, 96), Color3.fromRGB(255, 255, 255))
+infoButton.ZIndex = 22
+local settingsButton = makeButton(menuTabs, "SettingsButton", UDim2.fromOffset(152, 40), UDim2.fromOffset(336, 0), "Settings", Color3.fromRGB(56, 69, 96), Color3.fromRGB(255, 255, 255))
+settingsButton.ZIndex = 22
+
+local menuBody = Instance.new("Frame")
+menuBody.Name = "Body"
+menuBody.Size = UDim2.new(1, -28, 1, -182)
+menuBody.Position = UDim2.fromOffset(14, 174)
+menuBody.BackgroundColor3 = Color3.fromRGB(25, 30, 41)
+menuBody.ZIndex = 21
+menuBody.Parent = startMenuPanel
+
+local menuBodyCorner = Instance.new("UICorner")
+menuBodyCorner.CornerRadius = UDim.new(0, 16)
+menuBodyCorner.Parent = menuBody
+
+local menuBodyStroke = Instance.new("UIStroke")
+menuBodyStroke.Color = Color3.fromRGB(51, 64, 91)
+menuBodyStroke.Thickness = 1
+menuBodyStroke.Transparency = 0.15
+menuBodyStroke.Parent = menuBody
+
+local menuBodyTitle = makeLabel(menuBody, "MenuBodyTitle", UDim2.new(1, -24, 0, 28), UDim2.fromOffset(14, 14), "Start Now", 22, Color3.fromRGB(255, 255, 255), Enum.Font.GothamBold)
+menuBodyTitle.ZIndex = 22
+local menuBodyText = makeLabel(menuBody, "MenuBodyText", UDim2.new(1, -24, 1, -68), UDim2.fromOffset(14, 50), "Claim a tycoon and begin building.", 15, Color3.fromRGB(214, 223, 238), Enum.Font.Gotham)
+menuBodyText.TextYAlignment = Enum.TextYAlignment.Top
+menuBodyText.TextWrapped = true
+menuBodyText.ZIndex = 22
+
+local settingsActionButton = makeButton(menuBody, "SettingsActionButton", UDim2.fromOffset(160, 38), UDim2.new(0, 14, 1, -52), "Music: On", Color3.fromRGB(66, 84, 112), Color3.fromRGB(255, 255, 255))
+settingsActionButton.Visible = false
+settingsActionButton.ZIndex = 22
+
+local latestState = nil
+local startMenuOpen = true
+local startMenuTab = "start"
+local musicMuted = false
+
 local function getToastColor(tone: string?): Color3
 	if tone == "warning" then
 		return Color3.fromRGB(255, 178, 79)
@@ -300,6 +432,118 @@ player.CharacterAdded:Connect(function()
 	task.defer(function()
 		sprintRemote:FireServer(isSprinting)
 	end)
+end)
+
+local function getBackgroundMusic()
+	local sound = SoundService:FindFirstChild("BackgroundMusic")
+	if sound and sound:IsA("Sound") then
+		return sound
+	end
+
+	return nil
+end
+
+local function applyMusicToggle()
+	local music = getBackgroundMusic()
+	settingsActionButton.Text = if musicMuted then "Music: Off" else "Music: On"
+	settingsActionButton.BackgroundColor3 = if musicMuted then Color3.fromRGB(92, 70, 76) else Color3.fromRGB(66, 84, 112)
+	if music then
+		music.Volume = if musicMuted then 0 else 0.2
+	end
+end
+
+local function closeStartMenu()
+	if not startMenuOpen then
+		return
+	end
+
+	startMenuOpen = false
+	local fade = TweenService:Create(startMenuOverlay, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
+	})
+	local shrink = TweenService:Create(startMenuPanel, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		BackgroundTransparency = 1,
+		Size = UDim2.fromOffset(530, 340),
+	})
+	fade:Play()
+	shrink:Play()
+	shrink.Completed:Wait()
+	startMenuOverlay.Visible = false
+	startMenuOverlay.BackgroundTransparency = 0.22
+	startMenuPanel.BackgroundTransparency = 0
+	startMenuPanel.Size = UDim2.fromOffset(560, 360)
+end
+
+local function openStartMenu()
+	if startMenuOpen then
+		return
+	end
+
+	startMenuOpen = true
+	startMenuOverlay.Visible = true
+	startMenuOverlay.BackgroundTransparency = 1
+	startMenuPanel.BackgroundTransparency = 0.18
+	startMenuPanel.Size = UDim2.fromOffset(530, 340)
+	TweenService:Create(startMenuOverlay, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0.22,
+	}):Play()
+	TweenService:Create(startMenuPanel, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		BackgroundTransparency = 0,
+		Size = UDim2.fromOffset(560, 360),
+	}):Play()
+end
+
+local function setMenuTab(tabName: string)
+	startMenuTab = tabName
+
+	local function styleTab(button: TextButton, isActive: boolean)
+		button.BackgroundColor3 = if isActive then Color3.fromRGB(130, 203, 255) else Color3.fromRGB(56, 69, 96)
+		button.TextColor3 = if isActive then Color3.fromRGB(16, 24, 33) else Color3.fromRGB(255, 255, 255)
+	end
+
+	styleTab(infoButton, tabName == "info")
+	styleTab(settingsButton, tabName == "settings")
+	styleTab(startNowButton, tabName == "start")
+	settingsActionButton.Visible = false
+
+	local tycoonCapacity = latestState and latestState.competition and latestState.competition.tycoonCapacity or 8
+	if tabName == "start" then
+		menuBodyTitle.Text = "Start Now"
+		menuBodyText.Text = "Spawn in the center, pick any open tycoon, use the starter dropper, and start climbing the factory floors."
+	elseif tabName == "info" then
+		menuBodyTitle.Text = "Information"
+		menuBodyText.Text = string.format(
+			"This server supports %d tycoons around the center hub.\n\nControls:\n- Walk to a claim pad to own a tycoon\n- Tap the starter dropper before automation\n- Hold Shift to sprint\n- Use owner door buttons to open your gate\n\nGoal:\nBuild your income, unlock the next floors, arm your base, and keep expanding.",
+			tycoonCapacity
+		)
+	else
+		menuBodyTitle.Text = "Settings"
+		menuBodyText.Text = "Local settings only.\n\nYou can mute the background music here. More toggles can be added later without affecting server gameplay."
+		settingsActionButton.Visible = true
+		applyMusicToggle()
+	end
+end
+
+startNowButton.MouseButton1Click:Connect(function()
+	setMenuTab("start")
+	closeStartMenu()
+end)
+
+infoButton.MouseButton1Click:Connect(function()
+	setMenuTab("info")
+end)
+
+settingsButton.MouseButton1Click:Connect(function()
+	setMenuTab("settings")
+end)
+
+menuButton.MouseButton1Click:Connect(function()
+	openStartMenu()
+end)
+
+settingsActionButton.MouseButton1Click:Connect(function()
+	musicMuted = not musicMuted
+	applyMusicToggle()
 end)
 
 local function getProgressText(state)
@@ -451,6 +695,7 @@ end
 
 local function updateUi(state)
 	state = state or {}
+	latestState = state
 
 	local purchased = state.purchasedUpgrades or {}
 	local walletCash = state.walletCash or 0
@@ -556,3 +801,6 @@ task.defer(function()
 		updateUi(initialState)
 	end
 end)
+
+setMenuTab("start")
+applyMusicToggle()
