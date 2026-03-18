@@ -539,6 +539,78 @@ local function createWallSet(parent: Instance, source, prefix: string, yOffset: 
 	}
 end
 
+local function createDeckTrim(parent: Instance, source, prefix: string, centerOffset: Vector3, deckSize: Vector3, accent: Color3, baseColor: Color3)
+	local halfX = deckSize.X / 2
+	local halfZ = deckSize.Z / 2
+	local y = centerOffset.Y + (deckSize.Y / 2) + 0.55
+
+	createPart(parent, prefix .. "OutlineFront", Vector3.new(deckSize.X, 0.6, 2), getWorldCFrame(source, Vector3.new(centerOffset.X, y, centerOffset.Z - halfZ + 1)), {
+		Color = baseColor,
+		Material = Enum.Material.Metal,
+	})
+	createPart(parent, prefix .. "OutlineBack", Vector3.new(deckSize.X, 0.6, 2), getWorldCFrame(source, Vector3.new(centerOffset.X, y, centerOffset.Z + halfZ - 1)), {
+		Color = baseColor,
+		Material = Enum.Material.Metal,
+	})
+	createPart(parent, prefix .. "OutlineLeft", Vector3.new(2, 0.6, deckSize.Z - 4), getWorldCFrame(source, Vector3.new(centerOffset.X - halfX + 1, y, centerOffset.Z)), {
+		Color = baseColor,
+		Material = Enum.Material.Metal,
+	})
+	createPart(parent, prefix .. "OutlineRight", Vector3.new(2, 0.6, deckSize.Z - 4), getWorldCFrame(source, Vector3.new(centerOffset.X + halfX - 1, y, centerOffset.Z)), {
+		Color = baseColor,
+		Material = Enum.Material.Metal,
+	})
+	createPart(parent, prefix .. "GlowLineA", Vector3.new(deckSize.X - 12, 0.18, 1.2), getWorldCFrame(source, Vector3.new(centerOffset.X, y + 0.15, centerOffset.Z - (halfZ * 0.28))), {
+		Color = accent,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+	createPart(parent, prefix .. "GlowLineB", Vector3.new(deckSize.X - 12, 0.18, 1.2), getWorldCFrame(source, Vector3.new(centerOffset.X, y + 0.15, centerOffset.Z + (halfZ * 0.28))), {
+		Color = accent,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+end
+
+local function createBaseFloorDecor(parent: Instance, source, accent: Color3)
+	local decorFolder = ensureFolder(parent, "BaseFloorDecor")
+	clearFolder(decorFolder)
+
+	createDeckTrim(decorFolder, source, "Base", Vector3.zero, GameConfig.TYCOON_SIZE, accent, Color3.fromRGB(70, 77, 95))
+	createPart(decorFolder, "EntryWalkway", Vector3.new(28, 0.4, 24), getWorldCFrame(source, Vector3.new(0, 1.25, -44)), {
+		Color = Color3.fromRGB(73, 81, 99),
+		Material = Enum.Material.DiamondPlate,
+	})
+	createPart(decorFolder, "FactoryWalkway", Vector3.new(22, 0.35, 96), getWorldCFrame(source, Vector3.new(GameConfig.TYCOON_CONVEYOR_X_OFFSET + 10, 1.22, 2)), {
+		Color = Color3.fromRGB(58, 64, 79),
+		Material = Enum.Material.Metal,
+	})
+	createPart(decorFolder, "UtilityWalkway", Vector3.new(24, 0.35, 106), getWorldCFrame(source, Vector3.new(49, 1.22, 4)), {
+		Color = Color3.fromRGB(53, 59, 75),
+		Material = Enum.Material.Metal,
+	})
+	createPart(decorFolder, "CenterStrip", Vector3.new(12, 0.2, 128), getWorldCFrame(source, Vector3.new(0, 1.28, 0)), {
+		Color = accent,
+		Material = Enum.Material.Neon,
+		Transparency = 0.2,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+	createPart(decorFolder, "ArmoryStencil", Vector3.new(18, 0.2, 28), getWorldCFrame(source, Vector3.new(47, 1.3, 2)), {
+		Color = Color3.fromRGB(255, 196, 118),
+		Material = Enum.Material.Neon,
+		Transparency = 0.35,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+end
+
 local function ensureSpawnPoints(model: Model, source): Folder
 	local spawnPoints = ensureFolder(model, "SpawnPoints")
 	clearFolder(spawnPoints)
@@ -586,6 +658,7 @@ local function ensureWeek3Scaffolding(model: Model, definition: Definition)
 	destroyChild(model, "Runtime")
 	destroyChild(model, "Values")
 	destroyChild(model, "EarningsBoard")
+	destroyChild(model, "BaseFloorDecor")
 	destroyChild(model, "LowWalls")
 	destroyChild(model, "HighWalls")
 	destroyChild(model, "Door")
@@ -594,6 +667,7 @@ local function ensureWeek3Scaffolding(model: Model, definition: Definition)
 		Color = Color3.fromRGB(44, 47, 57),
 		Material = Enum.Material.Slate,
 	})
+	createBaseFloorDecor(model, source, definition.Accent)
 
 	local claimPad = ensurePart(model, "ClaimPad", GameConfig.CLAIM_PAD_UNCLAIMED_SIZE, getWorldCFrame(source, GameConfig.CLAIM_PAD_OFFSET), {
 		Color = Color3.fromRGB(63, 215, 120),
@@ -1040,6 +1114,15 @@ local function ensureSecondFloorFoundation(selfTable)
 		Color = Color3.fromRGB(56, 63, 79),
 		Material = Enum.Material.Metal,
 	})
+	createDeckTrim(folder, selfTable, "UpperDeck", SecondFloorConfig.FOUNDATION_OFFSET, SecondFloorConfig.FOUNDATION_SIZE, selfTable.Accent, Color3.fromRGB(88, 96, 118))
+	createPart(folder, "UpperCrossWalk", Vector3.new(20, 0.35, 54), getWorldCFrame(selfTable, Vector3.new(-10, SecondFloorConfig.BASE_Y_OFFSET + 1.25, 48)), {
+		Color = Color3.fromRGB(79, 87, 108),
+		Material = Enum.Material.DiamondPlate,
+	})
+	createPart(folder, "UpperFactoryPad", Vector3.new(42, 0.35, 42), getWorldCFrame(selfTable, Vector3.new(4, SecondFloorConfig.BASE_Y_OFFSET + 1.25, 40)), {
+		Color = Color3.fromRGB(63, 70, 88),
+		Material = Enum.Material.Metal,
+	})
 end
 
 local function clearSecondFloorFoundation(selfTable)
@@ -1236,6 +1319,15 @@ local function ensureThirdFloorFoundation(selfTable)
 	})
 	createPart(folder, "SupportRearRight", Vector3.new(3, ThirdFloorConfig.BASE_Y_OFFSET - SecondFloorConfig.BASE_Y_OFFSET, 3), getWorldCFrame(selfTable, Vector3.new(supportX, SecondFloorConfig.BASE_Y_OFFSET + ((ThirdFloorConfig.BASE_Y_OFFSET - SecondFloorConfig.BASE_Y_OFFSET) / 2), supportRearZ)), {
 		Color = Color3.fromRGB(60, 68, 86),
+		Material = Enum.Material.Metal,
+	})
+	createDeckTrim(folder, selfTable, "ThirdDeck", ThirdFloorConfig.FOUNDATION_OFFSET, ThirdFloorConfig.FOUNDATION_SIZE, selfTable.Accent, Color3.fromRGB(94, 102, 126))
+	createPart(folder, "ThirdCatwalk", Vector3.new(22, 0.35, 50), getWorldCFrame(selfTable, Vector3.new(-12, ThirdFloorConfig.BASE_Y_OFFSET + 1.25, 52)), {
+		Color = Color3.fromRGB(85, 93, 116),
+		Material = Enum.Material.DiamondPlate,
+	})
+	createPart(folder, "ThirdFactoryPad", Vector3.new(40, 0.35, 40), getWorldCFrame(selfTable, Vector3.new(18, ThirdFloorConfig.BASE_Y_OFFSET + 1.25, 44)), {
+		Color = Color3.fromRGB(67, 74, 94),
 		Material = Enum.Material.Metal,
 	})
 end
@@ -1580,6 +1672,130 @@ end
 
 local function clearUtilityBay(selfTable)
 	local folder = selfTable.StructuresFolder:FindFirstChild("UtilityBay")
+	if folder and folder:IsA("Folder") then
+		clearFolder(folder)
+	end
+end
+
+local function createArmoryDisplay(folder: Folder, selfTable, name: string, labelText: string, localPosition: Vector3, accent: Color3)
+	local base = createPart(folder, name .. "Base", Vector3.new(8, 1, 8), getWorldCFrame(selfTable, localPosition + Vector3.new(0, 0.6, 0)), {
+		Color = Color3.fromRGB(42, 47, 57),
+		Material = Enum.Material.Metal,
+	})
+	createPart(folder, name .. "Pad", Vector3.new(6, 0.3, 6), getWorldCFrame(selfTable, localPosition + Vector3.new(0, 1.28, 0)), {
+		Color = accent,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+	local model = createPart(folder, name .. "Display", Vector3.new(1.2, 3, 4), getWorldCFrame(selfTable, localPosition + Vector3.new(0, 3.1, 0)), {
+		Color = accent,
+		Material = Enum.Material.Metal,
+	})
+	createPart(folder, name .. "Barrel", Vector3.new(0.8, 0.8, 3.4), model.CFrame * CFrame.new(0, 0.3, -2.6), {
+		Color = Color3.fromRGB(225, 230, 240),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+	local sign = createPart(folder, name .. "Sign", Vector3.new(7, 4, 1), getWorldCFrame(selfTable, localPosition + Vector3.new(0, 5.2, 4.2)), {
+		Color = Color3.fromRGB(24, 28, 37),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	ensureSurfaceLabel(sign, labelText, Enum.NormalId.Front, Color3.fromRGB(255, 245, 226))
+
+	return base
+end
+
+local function ensureArmoryBay(selfTable)
+	local folder = ensureFolder(selfTable.StructuresFolder, "ArmoryBay")
+	if #folder:GetChildren() > 0 then
+		return
+	end
+
+	createPart(folder, "ArmoryFloor", Vector3.new(22, 1, 38), getWorldCFrame(selfTable, Vector3.new(48, 1.1, 2)), {
+		Color = Color3.fromRGB(40, 44, 55),
+		Material = Enum.Material.Metal,
+	})
+	createPart(folder, "ArmoryBackWall", Vector3.new(22, 14, 2), getWorldCFrame(selfTable, Vector3.new(48, 7, -18)), {
+		Color = Color3.fromRGB(56, 62, 78),
+		Material = Enum.Material.Metal,
+	})
+	createPart(folder, "ArmoryAccent", Vector3.new(20, 0.4, 34), getWorldCFrame(selfTable, Vector3.new(48, 1.5, 2)), {
+		Color = Color3.fromRGB(255, 204, 122),
+		Material = Enum.Material.Neon,
+		Transparency = 0.18,
+		CanCollide = false,
+		CanTouch = false,
+		CanQuery = false,
+	})
+	local sign = createPart(folder, "ArmorySign", Vector3.new(16, 5, 1), getWorldCFrame(selfTable, Vector3.new(48, 12, -17)), {
+		Color = Color3.fromRGB(23, 26, 34),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	ensureSurfaceLabel(sign, "TYCOON ARMORY", Enum.NormalId.Front, Color3.fromRGB(255, 232, 194))
+	createPart(folder, "ArmoryRackLeft", Vector3.new(2, 10, 30), getWorldCFrame(selfTable, Vector3.new(38, 6, 2)), {
+		Color = Color3.fromRGB(77, 85, 104),
+		Material = Enum.Material.Metal,
+	})
+	createPart(folder, "ArmoryRackRight", Vector3.new(2, 10, 30), getWorldCFrame(selfTable, Vector3.new(58, 6, 2)), {
+		Color = Color3.fromRGB(77, 85, 104),
+		Material = Enum.Material.Metal,
+	})
+end
+
+local function clearArmoryBay(selfTable)
+	local folder = selfTable.StructuresFolder:FindFirstChild("ArmoryBay")
+	if folder and folder:IsA("Folder") then
+		clearFolder(folder)
+	end
+end
+
+local function ensureCombatKnifeDisplay(selfTable)
+	local folder = ensureFolder(selfTable.StructuresFolder, "CombatKnifeDisplay")
+	if #folder:GetChildren() > 0 then
+		return
+	end
+
+	createArmoryDisplay(folder, selfTable, "Knife", "Combat\nKnife", Vector3.new(42, 1, 4), Color3.fromRGB(194, 216, 242))
+end
+
+local function clearCombatKnifeDisplay(selfTable)
+	local folder = selfTable.StructuresFolder:FindFirstChild("CombatKnifeDisplay")
+	if folder and folder:IsA("Folder") then
+		clearFolder(folder)
+	end
+end
+
+local function ensureMoneyBlasterDisplay(selfTable)
+	local folder = ensureFolder(selfTable.StructuresFolder, "MoneyBlasterDisplay")
+	if #folder:GetChildren() > 0 then
+		return
+	end
+
+	createArmoryDisplay(folder, selfTable, "Blaster", "Money\nBlaster", Vector3.new(56, 1, 4), Color3.fromRGB(118, 255, 171))
+end
+
+local function clearMoneyBlasterDisplay(selfTable)
+	local folder = selfTable.StructuresFolder:FindFirstChild("MoneyBlasterDisplay")
+	if folder and folder:IsA("Folder") then
+		clearFolder(folder)
+	end
+end
+
+local function ensureMoneyRpgDisplay(selfTable)
+	local folder = ensureFolder(selfTable.StructuresFolder, "MoneyRpgDisplay")
+	if #folder:GetChildren() > 0 then
+		return
+	end
+
+	createArmoryDisplay(folder, selfTable, "Rpg", "Money\nRPG", Vector3.new(49, 1, 20), Color3.fromRGB(255, 162, 98))
+end
+
+local function clearMoneyRpgDisplay(selfTable)
+	local folder = selfTable.StructuresFolder:FindFirstChild("MoneyRpgDisplay")
 	if folder and folder:IsA("Folder") then
 		clearFolder(folder)
 	end
@@ -2033,6 +2249,30 @@ function Tycoon:applyVisualState(purchased: { [string]: boolean }, collectorStor
 		ensureUtilityBay(self)
 	else
 		clearUtilityBay(self)
+	end
+
+	if purchased.armory_bay == true then
+		ensureArmoryBay(self)
+	else
+		clearArmoryBay(self)
+	end
+
+	if purchased.armory_bay == true and purchased.combat_knife == true then
+		ensureCombatKnifeDisplay(self)
+	else
+		clearCombatKnifeDisplay(self)
+	end
+
+	if purchased.armory_bay == true and purchased.money_blaster == true then
+		ensureMoneyBlasterDisplay(self)
+	else
+		clearMoneyBlasterDisplay(self)
+	end
+
+	if purchased.armory_bay == true and purchased.money_rpg == true then
+		ensureMoneyRpgDisplay(self)
+	else
+		clearMoneyRpgDisplay(self)
 	end
 
 	if purchased.roof_frame == true then

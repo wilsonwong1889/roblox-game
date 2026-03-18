@@ -14,6 +14,7 @@ $requiredFiles = @(
     "src\ServerScriptService\Services\TycoonOwnershipRegistry.luau",
     "src\ServerScriptService\Services\TycoonService.luau",
     "src\ServerScriptService\Services\SelfTestService.luau",
+    "src\ServerScriptService\Services\WeaponService.luau",
     "src\StarterGui\MainClient.client.luau",
     "src\Workspace\TycoonModels.luau",
     "src\ServerStorage\TycoonAssets.luau",

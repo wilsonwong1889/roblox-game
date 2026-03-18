@@ -11,6 +11,7 @@ local SecondFloorConfig = require(ReplicatedStorage.Modules.SecondFloorConfig)
 local ThirdFloorConfig = require(ReplicatedStorage.Modules.ThirdFloorConfig)
 local SelfTestService = require(script.Parent.Services.SelfTestService)
 local TycoonService = require(script.Parent.Services.TycoonService)
+local WeaponService = require(script.Parent.Services.WeaponService)
 
 local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
 remotesFolder.Name = "Remotes"
@@ -40,6 +41,10 @@ local week3DoorRuntime: { [string]: {
 	isOpen: boolean,
 	openToken: number,
 } } = {}
+
+local updateLeaderstats
+local sendStateUpdate
+local broadcastAllStates
 
 local function getAllUpgradeIds(): { string }
 	return table.clone(GameConfig.UPGRADE_ORDER)
@@ -378,7 +383,7 @@ local function getOrCreateLeaderstatsValue(leaderstats: Folder, className: strin
 	return valueObject
 end
 
-local function updateLeaderstats(player: Player)
+updateLeaderstats = function(player: Player)
 	local profile = PlayerProfile.getProfile(player)
 	if not profile then
 		return
@@ -404,14 +409,14 @@ local function updateLeaderstats(player: Player)
 	eps.Value = PlayerProfile.getEarningsPerSecond(player)
 end
 
-local function sendStateUpdate(player: Player)
+sendStateUpdate = function(player: Player)
 	local payload = getStatePayload(player)
 	if payload then
 		stateRemote:FireClient(player, payload)
 	end
 end
 
-local function broadcastAllStates()
+broadcastAllStates = function()
 	local competitionSnapshot = getCompetitionSnapshot()
 	for _, player in Players:GetPlayers() do
 		local payload = getStatePayload(player, competitionSnapshot)
@@ -622,6 +627,7 @@ local function applyDeveloperFullBuild(player: Player)
 	PlayerProfile.collectStoredCash(player)
 	refreshTycoonForPlayer(player)
 	restoreOwnedDroppers(player)
+	WeaponService.grantOwnedWeapons(player, PlayerProfile.getProfile(player).PurchasedUpgrades)
 end
 
 local function purchaseUpgrade(player: Player, upgradeId: string)
@@ -667,6 +673,12 @@ local function purchaseUpgrade(player: Player, upgradeId: string)
 
 	if getDropperConfig(upgradeId) then
 		startDropperLoop(player, profile.TycoonId, upgradeId)
+	end
+
+	if WeaponService.isWeaponUpgrade(upgradeId) then
+		WeaponService.grantUpgradeTool(player, upgradeId)
+		sendUiMessage(player, "Weapon Unlocked", string.format("%s has been added to your backpack.", upgrade.name), "success")
+		return
 	end
 
 	if upgrade.category == "structure" then
@@ -887,6 +899,7 @@ local function handleCharacterAdded(player: Player)
 	if root and profile.TycoonId then
 		TycoonService.teleportToSpawn(player, profile.TycoonId)
 	end
+	WeaponService.grantOwnedWeapons(player, profile.PurchasedUpgrades)
 	applyMovementSpeed(player)
 end
 
@@ -898,6 +911,7 @@ local function setupPlayer(player: Player)
 	PlayerProfile.createProfile(player)
 	sprintStates[player.UserId] = false
 	grantVipStarterPackIfNeeded(player, "join")
+	WeaponService.grantOwnedWeapons(player, PlayerProfile.getProfile(player).PurchasedUpgrades)
 	updateLeaderstats(player)
 	sendStateUpdate(player)
 
@@ -930,6 +944,7 @@ Players.PlayerRemoving:Connect(function(player)
 	PlayerProfile.removeProfile(player)
 	starterClickerCooldowns[player.UserId] = nil
 	sprintStates[player.UserId] = nil
+	WeaponService.clearPlayerState(player)
 	broadcastAllStates()
 end)
 

@@ -4,8 +4,8 @@ local ThirdFloorConfig = require(script.Parent.ThirdFloorConfig)
 local GameConfig = {}
 
 GameConfig.GAME_NAME = "Break-In Tycoon"
-GameConfig.GAME_STAGE = "Week 6 Three Floor Factory"
-GameConfig.WEEK_PHASE = "Week 6 Three Floor Factory"
+GameConfig.GAME_STAGE = "Week 6 Armed Factory Expansion"
+GameConfig.WEEK_PHASE = "Week 6 Armed Factory Expansion"
 GameConfig.ACTIVE_TYCOON_COUNT = 8
 GameConfig.SECOND_FLOOR_ENABLED = SecondFloorConfig.ENABLED
 GameConfig.THIRD_FLOOR_ENABLED = ThirdFloorConfig.ENABLED
@@ -102,6 +102,10 @@ GameConfig.MAP_BOUNDARY_GLOW_COLOR = Color3.fromRGB(255, 184, 224)
 GameConfig.MAP_DECOR_PRIMARY = Color3.fromRGB(255, 138, 216)
 GameConfig.MAP_DECOR_SECONDARY = Color3.fromRGB(255, 214, 241)
 GameConfig.MAP_DECOR_ACCENT = Color3.fromRGB(196, 116, 255)
+GameConfig.MAP_TREE_RING_RADIUS = 432
+GameConfig.MAP_TREE_CLUSTER_COUNT = 18
+GameConfig.MAP_MOUNTAIN_RING_RADIUS = 490
+GameConfig.MAP_MOUNTAIN_CLUSTER_COUNT = 10
 GameConfig.PINK_SKY_ENABLED = true
 GameConfig.PINK_SKY_AMBIENT = Color3.fromRGB(140, 104, 148)
 GameConfig.PINK_SKY_OUTDOOR_AMBIENT = Color3.fromRGB(182, 132, 170)
@@ -309,6 +313,38 @@ GameConfig.UPGRADES = {
 		category = "structure",
 		requires = { "rear_extension" },
 	},
+	armory_bay = {
+		id = "armory_bay",
+		name = "Armory Bay",
+		cost = 8400,
+		description = "Builds a weapon bay inside the utility wing.",
+		category = "structure",
+		requires = { "utility_bay", "high_walls" },
+	},
+	combat_knife = {
+		id = "combat_knife",
+		name = "Combat Knife",
+		cost = 1800,
+		description = "Unlocks a melee weapon from the armory.",
+		category = "combat",
+		requires = { "armory_bay" },
+	},
+	money_blaster = {
+		id = "money_blaster",
+		name = "Money Blaster",
+		cost = 6200,
+		description = "Unlocks a short-range cash blaster.",
+		category = "combat",
+		requires = { "armory_bay", "cash_compressor" },
+	},
+	money_rpg = {
+		id = "money_rpg",
+		name = "Money RPG",
+		cost = 20000,
+		description = "Unlocks a top-tier rocket launcher.",
+		category = "combat",
+		requires = { "money_blaster", "second_floor" },
+	},
 	roof_frame = {
 		id = "roof_frame",
 		name = "Roof Frame",
@@ -422,6 +458,10 @@ GameConfig.UPGRADE_ORDER = {
 	"corner_posts",
 	"rear_extension",
 	"utility_bay",
+	"armory_bay",
+	"combat_knife",
+	"money_blaster",
+	"money_rpg",
 	"roof_frame",
 	"second_floor",
 	"upper_walls",
@@ -440,6 +480,12 @@ GameConfig.UPGRADE_ORDER = {
 	"third_dropper_4",
 	"third_collector",
 	"developer_full_build",
+}
+
+GameConfig.WEAPON_UPGRADE_ORDER = {
+	"combat_knife",
+	"money_blaster",
+	"money_rpg",
 }
 
 GameConfig.DROPPERS = {
@@ -563,6 +609,18 @@ GameConfig.BUTTON_LAYOUTS = {
 	utility_bay = {
 		offset = Vector3.new(34, 1.3, 61),
 	},
+	armory_bay = {
+		offset = Vector3.new(34, 1.3, -7),
+	},
+	combat_knife = {
+		offset = Vector3.new(42, 1.3, 6),
+	},
+	money_blaster = {
+		offset = Vector3.new(56, 1.3, 6),
+	},
+	money_rpg = {
+		offset = Vector3.new(49, 1.3, 22),
+	},
 	roof_frame = {
 		offset = Vector3.new(26, 1.3, 71),
 	},
@@ -608,6 +666,10 @@ end
 
 function GameConfig.getAllDropperIds(): { string }
 	return table.clone(GameConfig.ALL_DROPPER_ORDER)
+end
+
+function GameConfig.getWeaponUpgradeIds(): { string }
+	return table.clone(GameConfig.WEAPON_UPGRADE_ORDER)
 end
 
 function GameConfig.isUpperFloorUpgrade(upgradeId: string): boolean

@@ -276,6 +276,63 @@ local function buildPlanterCluster(parent: Instance, name: string, center: Vecto
 	})
 end
 
+local function buildTreeCluster(parent: Instance, name: string, center: Vector3, canopyColor: Color3, scale: number?)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = parent
+
+	local sizeScale = scale or 1
+	createPart(folder, "Trunk", Vector3.new(4, 22 * sizeScale, 4), CFrame.new(center + Vector3.new(0, 11 * sizeScale, 0)), {
+		Color = Color3.fromRGB(109, 79, 60),
+		Material = Enum.Material.Wood,
+	})
+	createPart(folder, "CanopyLow", Vector3.new(18 * sizeScale, 10 * sizeScale, 18 * sizeScale), CFrame.new(center + Vector3.new(0, 23 * sizeScale, 0)), {
+		Color = canopyColor,
+		Material = Enum.Material.Grass,
+		Shape = Enum.PartType.Ball,
+	})
+	createPart(folder, "CanopyMid", Vector3.new(14 * sizeScale, 9 * sizeScale, 14 * sizeScale), CFrame.new(center + Vector3.new(0, 29 * sizeScale, 0)), {
+		Color = canopyColor:Lerp(Color3.new(1, 1, 1), 0.08),
+		Material = Enum.Material.Grass,
+		Shape = Enum.PartType.Ball,
+	})
+	createPart(folder, "CanopyTop", Vector3.new(10 * sizeScale, 8 * sizeScale, 10 * sizeScale), CFrame.new(center + Vector3.new(0, 34 * sizeScale, 0)), {
+		Color = canopyColor:Lerp(Color3.new(1, 1, 1), 0.14),
+		Material = Enum.Material.Grass,
+		Shape = Enum.PartType.Ball,
+	})
+end
+
+local function buildMountainCluster(parent: Instance, name: string, center: Vector3, primary: Color3, accent: Color3, yawDegrees: number)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = parent
+
+	local baseCFrame = CFrame.new(center) * CFrame.Angles(0, math.rad(yawDegrees), 0)
+	createPart(folder, "Base", Vector3.new(72, 18, 46), baseCFrame * CFrame.new(0, 9, 0), {
+		Color = primary,
+		Material = Enum.Material.Slate,
+	})
+	createPart(folder, "PeakA", Vector3.new(32, 50, 28), baseCFrame * CFrame.new(-14, 34, -4), {
+		Color = accent,
+		Material = Enum.Material.Rock,
+		Shape = Enum.PartType.Wedge,
+	})
+	createPart(folder, "PeakB", Vector3.new(36, 62, 30), baseCFrame * CFrame.new(12, 39, 4), {
+		Color = primary:Lerp(Color3.new(1, 1, 1), 0.1),
+		Material = Enum.Material.Rock,
+		Shape = Enum.PartType.Wedge,
+	})
+	createPart(folder, "SnowCapA", Vector3.new(22, 10, 18), baseCFrame * CFrame.new(-10, 58, -2), {
+		Color = Color3.fromRGB(255, 236, 246),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	createPart(folder, "SnowCapB", Vector3.new(24, 12, 20), baseCFrame * CFrame.new(14, 68, 2), {
+		Color = Color3.fromRGB(255, 231, 243),
+		Material = Enum.Material.SmoothPlastic,
+	})
+end
+
 local function ensurePinkSky()
 	if not GameConfig.PINK_SKY_ENABLED then
 		return
@@ -523,6 +580,38 @@ local function ensureSharedMap(sharedMapFolder: Folder, centerX: number, centerZ
 	buildPlanterCluster(decorationsFolder, "CornerNorthEast", Vector3.new(centerX + cornerHalfWidth, 0, centerZ - cornerHalfDepth), Color3.fromRGB(125, 225, 255))
 	buildPlanterCluster(decorationsFolder, "CornerSouthWest", Vector3.new(centerX - cornerHalfWidth, 0, centerZ + cornerHalfDepth), Color3.fromRGB(255, 146, 196))
 	buildPlanterCluster(decorationsFolder, "CornerSouthEast", Vector3.new(centerX + cornerHalfWidth, 0, centerZ + cornerHalfDepth), Color3.fromRGB(159, 255, 211))
+
+	local forestFolder = ensureFolder(decorationsFolder, "ForestRing")
+	local treeRadius = GameConfig.MAP_TREE_RING_RADIUS
+	for treeIndex = 1, GameConfig.MAP_TREE_CLUSTER_COUNT do
+		local alpha = ((treeIndex - 1) / GameConfig.MAP_TREE_CLUSTER_COUNT) * math.pi * 2
+		local position = Vector3.new(
+			centerX + math.cos(alpha) * treeRadius,
+			0,
+			centerZ + math.sin(alpha) * (treeRadius * 0.92)
+		)
+		local canopyColor = Color3.fromRGB(94 + (treeIndex % 4) * 12, 150 + (treeIndex % 3) * 18, 116 + (treeIndex % 5) * 9)
+		buildTreeCluster(forestFolder, "TreeCluster" .. treeIndex, position, canopyColor, if treeIndex % 3 == 0 then 1.18 else 1)
+	end
+
+	local mountainFolder = ensureFolder(decorationsFolder, "MountainRing")
+	local mountainRadius = GameConfig.MAP_MOUNTAIN_RING_RADIUS
+	for mountainIndex = 1, GameConfig.MAP_MOUNTAIN_CLUSTER_COUNT do
+		local alpha = ((mountainIndex - 1) / GameConfig.MAP_MOUNTAIN_CLUSTER_COUNT) * math.pi * 2
+		local position = Vector3.new(
+			centerX + math.cos(alpha) * mountainRadius,
+			0,
+			centerZ + math.sin(alpha) * (mountainRadius * 0.9)
+		)
+		buildMountainCluster(
+			mountainFolder,
+			"Mountain" .. mountainIndex,
+			position,
+			Color3.fromRGB(122, 102, 132),
+			Color3.fromRGB(164, 132, 176),
+			math.deg(alpha) + 90
+		)
+	end
 end
 
 function TycoonService.initialize()
